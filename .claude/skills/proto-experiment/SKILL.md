@@ -37,6 +37,7 @@ One experiment = one folder `src/experiments/<folder>/<name>/` with `index.ts` (
 - Iterate: one change → shot → judge. Stop when the brief's Acceptance is met or the user decides.
 
 ## 4. Record
+- If the user picked looks in the page, ask them to Export presets and commit the `presets.json` beside `index.ts` (or write it yourself in that format).
 - Fill `port` tiers and short notes per engine (load the `engine-port` skill).
 - Write `brief.md` → Findings: chosen params (from `current().params` in report.json), what failed, port caveats.
 - Commit the experiment folder as one commit (`feat(<id>): ...`).
