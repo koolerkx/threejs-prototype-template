@@ -124,7 +124,15 @@ export class Panel {
   }
 
   setVisible(visible: boolean): void {
+    this.setGuiVisible(visible);
+    this.setInfoVisible(visible);
+  }
+
+  setGuiVisible(visible: boolean): void {
     this.gui.show(visible);
+  }
+
+  setInfoVisible(visible: boolean): void {
     this.info.hidden = !visible;
   }
 

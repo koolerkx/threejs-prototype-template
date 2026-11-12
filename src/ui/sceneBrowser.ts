@@ -69,7 +69,7 @@ export class SceneBrowser {
   private visibleScenes: string[] = [];
   private readonly thumbs = new Map<string, string>();
 
-  constructor(private readonly onOpen: (id: string) => void) {
+  constructor(private readonly onOpen: (id: string) => void, onGallery?: () => void) {
     const head = document.createElement('div');
     head.className = 'browser-head';
     const title = document.createElement('span');
@@ -89,7 +89,20 @@ export class SceneBrowser {
         this.step(e.key === 'Enter' ? 0 : 1);
       }
     });
-    head.append(title, this.filter);
+    const titleRow = document.createElement('div');
+    titleRow.className = 'browser-title';
+    titleRow.append(title);
+    if (onGallery) {
+      const gallery = document.createElement('button');
+      gallery.textContent = '⊞ Gallery';
+      gallery.title = 'Open all scenes as a gallery (G)';
+      gallery.addEventListener('click', () => {
+        gallery.blur();
+        onGallery();
+      });
+      titleRow.append(gallery);
+    }
+    head.append(titleRow, this.filter);
 
     this.list = document.createElement('div');
     this.list.className = 'browser-list';
@@ -102,6 +115,10 @@ export class SceneBrowser {
       const url = await loadThumbnail(id);
       if (url) this.thumbs.set(id, url);
     })).then(() => this.render());
+  }
+
+  getThumbnail(id: string): string | undefined {
+    return this.thumbs.get(id);
   }
 
   /** Last-seen thumbnail of a scene (captured automatically after it loads). */

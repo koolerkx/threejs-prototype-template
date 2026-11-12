@@ -7,15 +7,18 @@ import { EXPERIMENTS, findExperiment } from './core/registry';
 import { ExperimentRunner } from './core/runner';
 import { loadSession, saveSession } from './core/session';
 import { Stage, VIEW_MODES, type ViewMode } from './core/stage';
+import { SHEET_COLUMNS, SHEET_ROWS, SHEET_TILES } from './core/views';
 import { saveThumbnail, type CameraView } from './core/store';
 import { readUrlState, writeUrlState } from './core/urlState';
 import { installDebugApi, type FrameSignal } from './harness/debugApi';
 import { download, record, type FrameGrabber } from './harness/recorder';
 import { Bookmarks } from './ui/bookmarks';
+import { Gallery } from './ui/gallery';
 import { Panel } from './ui/panel';
 import { PerfHud } from './ui/perfHud';
 import { PresetsPanel } from './ui/presetsPanel';
 import { SceneBrowser } from './ui/sceneBrowser';
+import { SettingsPanel } from './ui/settings';
 import { Transport } from './ui/transport';
 import './style.css';
 
@@ -96,10 +99,12 @@ async function main(): Promise<void> {
     }, URL_SYNC_DELAY_MS);
   };
 
-  const browser = new SceneBrowser((id) => {
+  const openScene = (id: string) => {
     const entry = findExperiment(id);
     if (entry) void runner.load(entry).then(syncUrl);
-  });
+  };
+  let gallery: Gallery | null = null;
+  const browser = new SceneBrowser(openScene, () => gallery?.toggle());
 
   const presets = new PresetsPanel(document.getElementById('browser')!, {
     experiment: () => runner.current?.entry.id ?? null,
@@ -141,14 +146,60 @@ async function main(): Promise<void> {
   const transport = new Transport(clock);
   transport.append(bookmarks.element);
 
-  const setUiVisible = (visible: boolean) => {
-    panel?.setVisible(visible);
-    browser.setVisible(visible);
-    presets.setVisible(visible);
-    transport.setVisible(visible);
-    perfHud.setVisible(visible);
+  // Sheet view labels (DOM over the viewport; captures from `capture()` do not include them).
+  const sheetLabels = document.createElement('div');
+  sheetLabels.id = 'sheet-labels';
+  sheetLabels.style.gridTemplateColumns = `repeat(${SHEET_COLUMNS}, 1fr)`;
+  sheetLabels.style.gridTemplateRows = `repeat(${SHEET_ROWS}, 1fr)`;
+  sheetLabels.append(...SHEET_TILES.map((t) => Object.assign(document.createElement('span'), { textContent: t })));
+  document.body.append(sheetLabels);
+
+  // Visibility: H hides everything; the settings panel toggles each element.
+  let uiShown = !url.shot;
+  let settings: SettingsPanel | null = null;
+  const on = (key: string) => uiShown && (settings?.isOn(key) ?? true);
+  const overlayEl = document.getElementById('overlay')!;
+  const stageToggle = (key: 'grid' | 'ground' | 'shadows', label: string) => ({
+    key, label, group: 'Viewport' as const,
+    get: () => Boolean(stage.state.values[key]),
+    set: (v: boolean) => {
+      stage.state.set(key, v);
+      stage.apply();
+      panel?.syncStage();
+    },
+  });
+  const applyUi = () => {
+    panel?.setGuiVisible(on('panel'));
+    panel?.setInfoVisible(on('info'));
+    browser.setVisible(on('browser'));
+    presets.setVisible(on('presets'));
+    transport.setVisible(on('transport'));
+    bookmarks.element.hidden = !on('bookmarks');
+    perfHud.setVisible(on('perf'));
+    overlayEl.hidden = !(url.shot || on('overlay'));
+    sheetLabels.dataset.enabled = String(on('sheetLabels'));
+    settings?.setVisible(uiShown);
   };
-  setUiVisible(!url.shot);
+  settings = new SettingsPanel([
+    { key: 'browser', label: 'Scene browser', group: 'Interface', set: applyUi },
+    { key: 'presets', label: 'Presets', group: 'Interface', set: applyUi },
+    { key: 'panel', label: 'Params panel', group: 'Interface', set: applyUi },
+    { key: 'info', label: 'Info card', group: 'Interface', set: applyUi },
+    { key: 'transport', label: 'Time transport', group: 'Interface', set: applyUi },
+    { key: 'bookmarks', label: 'Camera bookmarks', group: 'Interface', set: applyUi },
+    { key: 'perf', label: 'Perf HUD', group: 'Interface', set: applyUi },
+    { key: 'overlay', label: 'Experiment overlay (HTML)', group: 'Interface', set: applyUi },
+    { key: 'sheetLabels', label: 'Sheet view labels', group: 'Interface', set: applyUi },
+    { key: 'autoThumbs', label: 'Auto scene thumbnails', group: 'Interface', set: applyUi },
+    stageToggle('grid', 'Grid (1 m)'),
+    stageToggle('ground', 'Shadow catcher'),
+    stageToggle('shadows', 'Shadows'),
+  ]);
+  const setUiVisible = (visible: boolean) => {
+    uiShown = visible;
+    applyUi();
+  };
+  applyUi();
 
   // Per-load wiring: reset time, view state, budget, bookmarks, presets, and an automatic scene thumbnail.
   let thumbAt = -1;
@@ -167,14 +218,45 @@ async function main(): Promise<void> {
     void presets.refresh();
     thumbAt = url.shot ? -1 : signal.frame + THUMB_DELAY_FRAMES;
   });
-  const takeSceneThumb = async () => {
+  const takeSceneThumb = async (force = false) => {
     const id = runner.current?.entry.id;
-    if (!id || stage.state.values.view !== 'lit') return;
+    if (!id || stage.state.values.view !== 'lit' || (!force && !settings?.isOn('autoThumbs'))) return;
     const dataUrl = (await grabber.grab(THUMB_WIDTH)).toDataURL('image/jpeg', 0.75);
     if (runner.current?.entry.id !== id) return;
     browser.setThumbnail(id, dataUrl);
-    void saveThumbnail(id, dataUrl);
+    gallery?.updateThumbnail(id);
+    await saveThumbnail(id, dataUrl);
   };
+
+  // Gallery: rendering pauses while it covers the viewport.
+  let renderingPaused = false;
+  const waitFrames = (n: number) => new Promise<void>((resolve) => signal.waiters.push({ until: signal.frame + n, resolve }));
+  gallery = new Gallery({
+    open: openScene,
+    current: () => runner.current?.entry.id ?? null,
+    thumbnail: (id) => browser.getThumbnail(id),
+    setRenderingPaused: (p) => (renderingPaused = p),
+    generateMissing: async (progress) => {
+      const missing = EXPERIMENTS.filter((e) => !browser.getThumbnail(e.id));
+      const back = runner.current?.entry;
+      const view = getView();
+      renderingPaused = false;
+      try {
+        for (const [i, e] of missing.entries()) {
+          progress(i, missing.length);
+          await runner.load(e);
+          await waitFrames(THUMB_DELAY_FRAMES);
+          await takeSceneThumb(true);
+        }
+      } finally {
+        if (back) {
+          await runner.load(back, {}, {});
+          setView(view);
+        }
+        renderingPaused = gallery?.isOpen ?? false;
+      }
+    },
+  });
 
   const resize = () => {
     const { clientWidth: w, clientHeight: h } = viewport;
@@ -188,6 +270,12 @@ async function main(): Promise<void> {
   addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement) return;
     if (e.code === 'KeyH') setUiVisible(!document.body.classList.toggle('ui-hidden'));
+    if (e.code === 'KeyG' && !e.ctrlKey && !e.metaKey && !e.altKey) gallery?.toggle();
+    if (e.code === 'KeyB' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      stage.state.set('view', stage.state.values.view === 'sheet' ? 'lit' : 'sheet');
+      stage.apply();
+      panel?.syncStage();
+    }
     if (e.code === 'KeyV' && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const i = VIEW_MODES.indexOf(stage.state.values.view as ViewMode);
       const next = VIEW_MODES[(i + (e.shiftKey ? VIEW_MODES.length - 1 : 1)) % VIEW_MODES.length];
@@ -221,7 +309,14 @@ async function main(): Promise<void> {
   addEventListener('pagehide', persist);
   import.meta.hot?.on('vite:beforeFullReload', persist);
 
+  let lastView = '';
   renderer.setAnimationLoop(() => {
+    if (renderingPaused) return; // gallery open: nothing visible to draw
+    const view = stage.state.values.view;
+    if (view !== lastView) {
+      lastView = view;
+      sheetLabels.classList.toggle('show', view === 'sheet');
+    }
     perf.beginFrame();
     const frame = clock.tick();
     controls.update();
