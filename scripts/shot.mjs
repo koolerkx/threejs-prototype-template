@@ -90,16 +90,23 @@ try {
   process.exit(2);
 }
 
-const page = await browser.newPage({ viewport: { width, height } });
 const logs = [];
 // Driver chatter, and Chrome's message when a WebGPU device is torn down by navigation.
+const WEBGPU_LIMIT_MS = 45_000;
 const NOISE = [/GL Driver Message/, /GPU stall due to ReadPixels/, /Instance dropped in popErrorScope/];
-page.on('console', (msg) => {
-  if (msg.type() !== 'error' && msg.type() !== 'warning') return;
-  if (NOISE.some((re) => re.test(msg.text()))) return;
-  logs.push({ type: msg.type(), text: msg.text() });
-});
-page.on('pageerror', (err) => logs.push({ type: 'pageerror', text: err.message }));
+async function openPage() {
+  const p = await browser.newPage({ viewport: { width, height } });
+  p.on('console', (msg) => {
+    if (msg.type() !== 'error' && msg.type() !== 'warning') return;
+    if (NOISE.some((re) => re.test(msg.text()))) return;
+    logs.push({ type: msg.type(), text: msg.text() });
+  });
+  p.on('pageerror', (err) => logs.push({ type: 'pageerror', text: err.message }));
+  return p;
+}
+let page = await openPage();
+// Becomes false once WebGPU gave no image in this browser; later captures go straight to WebGL2.
+let webgpuWorks = true;
 
 const query = (exp, extra = {}) => {
   const q = new URLSearchParams({ shot: '1', t: args.t, ...extra });
@@ -138,10 +145,25 @@ for (const id of ids) {
     const started = Date.now();
     const load = async (webgl) => {
       await page.goto(query(id, { params: JSON.stringify(params), stage: JSON.stringify(stage), ...(webgl ? { webgl: '1' } : {}) }));
-      await page.waitForFunction(() => window.__proto?.ready || document.body.dataset.error, null, { timeout: 30_000 });
+      await page.waitForFunction(() => window.__proto?.ready || document.body.dataset.error, null, { timeout: 60_000 });
       await page.evaluate((n) => window.__proto?.frames(n), Number(args.frames));
       // Read the canvas inside the page: compositor screenshots can miss WebGPU canvases in headless mode.
       return page.evaluate(() => window.__proto?.capture());
+    };
+    // Software WebGPU (GPU-less headless) can stall for minutes compiling large shaders: give it a time limit,
+    // then treat the attempt as blank so the WebGL2 retry runs.
+    const loadWithLimit = async (webgl) => {
+      if (webgl || args.headed || args.channel) return load(webgl);
+      const result = await Promise.race([
+        load(false).catch(() => ({ blank: true })),
+        new Promise((resolve) => setTimeout(() => resolve({ blank: true, timedOut: true }), WEBGPU_LIMIT_MS)),
+      ]);
+      if (result?.timedOut) {
+        // The stalled tab cannot navigate any more: replace it.
+        await page.close().catch(() => {});
+        page = await openPage();
+      }
+      return result;
     };
     if (args.page) {
       await load(args.webgl || !args.headed); // headless compositing misses WebGPU canvases
@@ -155,9 +177,10 @@ for (const id of ids) {
         warnings: entryLogs.filter((l) => l.type === 'warning').map((l) => l.text), png });
       continue;
     }
-    let capture = await load(args.webgl);
-    let fallback = false;
-    if (capture?.blank && !args.webgl) {
+    let capture = await loadWithLimit(args.webgl || !webgpuWorks);
+    let fallback = !args.webgl && !webgpuWorks;
+    if (capture?.blank && !args.webgl && webgpuWorks) {
+      webgpuWorks = false;
       fallback = true; // no readable WebGPU image (GPU-less headless browser): retry on the WebGL2 backend
       logStart = logs.length; // report only the attempt that produced the image
       capture = await load(true);
