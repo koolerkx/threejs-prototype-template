@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "experiment": "reference/pbr-calibration",
+  "presets": [
+    {
+      "name": "Studio HDRI",
+      "params": {},
+      "stage": {
+        "backdrop": "hdri",
+        "hdri": "studio_small_09",
+        "sunIntensity": 1.5
+      },
+      "camera": {
+        "position": [
+          0,
+          1.5,
+          4.6
+        ],
+        "target": [
+          0,
+          1.4,
+          0
+        ],
+        "fovDeg": 45
+      },
+      "created": 0
+    },
+    {
+      "name": "Sunset, low sun",
+      "params": {},
+      "stage": {
+        "backdrop": "hdri",
+        "hdri": "venice_sunset",
+        "sunElevationDeg": 8,
+        "sunAzimuthDeg": -70,
+        "sunColor": "#ffb27a"
+      },
+      "camera": {
+        "position": [
+          0,
+          1.5,
+          4.6
+        ],
+        "target": [
+          0,
+          1.4,
+          0
+        ],
+        "fovDeg": 45
+      },
+      "created": 0
+    },
+    {
+      "name": "Buffer: roughness",
+      "params": {},
+      "stage": {
+        "view": "roughness"
+      },
+      "created": 0
+    }
+  ]
+}

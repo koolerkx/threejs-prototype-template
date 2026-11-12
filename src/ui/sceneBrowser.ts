@@ -1,5 +1,6 @@
 import type { EngineId } from '../core/experiment';
 import { EXPERIMENTS, type RegisteredExperiment } from '../core/registry';
+import { loadThumbnail } from '../core/store';
 
 // File-browser style scene switcher: the folder tree under src/experiments/, filterable, keyboard navigable.
 //   Click / Enter: open   ArrowUp / ArrowDown: move and open   ArrowLeft / ArrowRight: collapse / expand folder
@@ -66,6 +67,7 @@ export class SceneBrowser {
   private readonly collapsed = loadCollapsed();
   private activeId: string | null = null;
   private visibleScenes: string[] = [];
+  private readonly thumbs = new Map<string, string>();
 
   constructor(private readonly onOpen: (id: string) => void) {
     const head = document.createElement('div');
@@ -95,6 +97,16 @@ export class SceneBrowser {
     this.root.replaceChildren(head, this.list);
 
     addEventListener('keydown', (e) => this.onKey(e));
+    this.render();
+    void Promise.all(EXPERIMENTS.map(async ({ id }) => {
+      const url = await loadThumbnail(id);
+      if (url) this.thumbs.set(id, url);
+    })).then(() => this.render());
+  }
+
+  /** Last-seen thumbnail of a scene (captured automatically after it loads). */
+  setThumbnail(id: string, dataUrl: string): void {
+    this.thumbs.set(id, dataUrl);
     this.render();
   }
 
@@ -174,8 +186,14 @@ export class SceneBrowser {
     row.title = `${entry.id}\n${entry.def.description}`;
 
     const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.textContent = '◆';
+    const thumb = this.thumbs.get(entry.id);
+    if (thumb) {
+      icon.className = 'sthumb';
+      icon.style.backgroundImage = `url(${thumb})`;
+    } else {
+      icon.className = 'icon';
+      icon.textContent = '◆';
+    }
     const text = document.createElement('span');
     text.className = 'text';
     const title = document.createElement('span');

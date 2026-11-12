@@ -12,6 +12,11 @@
 //          --headed  --channel chrome|msedge (use an installed browser instead of Playwright's Chromium)
 //          --frames <n> (frames to wait after load, default 6)  --webgl (force the WebGL2 backend)
 //          --page (capture the composited page incl. the experiment's HTML overlay; uses WebGL2 unless --headed)
+//          --cam <1-9> (camera bookmark)  --camera '{"position":[x,y,z],"target":[x,y,z]}'
+//
+// Motion: --range <start>:<end> steps time deterministically and writes a filmstrip of --count frames
+//         (default 6) into sheet.png; add --gif for .shots/<exp>.gif at --fps (default 12).
+//   yarn shot --exp materials/stylized-rim --range 0:2 --count 8 --gif
 //
 // Output: .shots/<exp with / as .>[__v<n>].png, .shots/sheet.png (when more than one capture), .shots/report.json.
 // Exit code 1 when any page error, console error or blank capture occurred.
@@ -38,6 +43,12 @@ const { values: args } = parseArgs({
     frames: { type: 'string', default: '6' },
     webgl: { type: 'boolean', default: false },
     page: { type: 'boolean', default: false },
+    range: { type: 'string' },
+    fps: { type: 'string', default: '12' },
+    count: { type: 'string', default: '6' },
+    gif: { type: 'boolean', default: false },
+    cam: { type: 'string' },
+    camera: { type: 'string' },
   },
 });
 
@@ -93,6 +104,8 @@ page.on('pageerror', (err) => logs.push({ type: 'pageerror', text: err.message }
 const query = (exp, extra = {}) => {
   const q = new URLSearchParams({ shot: '1', t: args.t, ...extra });
   if (args.webgl) q.set('webgl', '1');
+  if (args.cam) q.set('cam', args.cam);
+  if (args.camera) q.set('camera', args.camera);
   if (exp) q.set('exp', exp);
   return `${baseUrl}?${q}`;
 };
@@ -154,9 +167,22 @@ for (const id of ids) {
       ? Buffer.from(capture.dataUrl.slice(capture.dataUrl.indexOf(',') + 1), 'base64')
       : await page.locator('#viewport canvas').screenshot();
     await writeFile(file, png);
+    let frames;
+    if (args.range) {
+      const [a, b] = args.range.split(':').map(Number);
+      const fps = Number(args.fps);
+      const rec = await page.evaluate(
+        (o) => window.__proto.record(o),
+        { start: a, duration: Math.max(b - a, 1 / fps), fps, width: Math.round(width / 2), gif: args.gif, keyFrames: Number(args.count) },
+      );
+      frames = rec.keyFrames.map((f) => ({ time: f.time, png: Buffer.from(f.dataUrl.slice(f.dataUrl.indexOf(',') + 1), 'base64') }));
+      if (rec.gifBase64) await writeFile(file.replace(/\.png$/, '.gif'), Buffer.from(rec.gifBase64, 'base64'));
+    }
     const info = await page.evaluate(() => ({ stats: window.__proto?.stats(), current: window.__proto?.current() }));
     const entryLogs = logs.slice(logStart);
     shots.push({
+      frames,
+      gif: args.range && args.gif ? file.replace(/\.png$/, '.gif') : undefined,
       id,
       variant: variant ?? undefined,
       file,
@@ -172,29 +198,30 @@ for (const id of ids) {
   }
 }
 
-// Contact sheet: one image the agent can read to compare captures side by side.
-if (shots.length > 1) {
-  const cols = Math.min(shots.length, 3);
+// Contact sheet: one image the agent can read to compare captures (or motion frames) side by side.
+const cells = shots.flatMap((s) => {
+  const label = s.variant ? `${s.id} ${JSON.stringify(s.variant)}` : s.id;
+  return s.frames ? s.frames.map((f) => ({ label: `${label} t=${f.time.toFixed(2)}s`, png: f.png })) : [{ label, png: s.png }];
+});
+if (cells.length > 1) {
+  const cols = Math.min(cells.length, args.range ? 4 : 3);
   const cellW = Math.round(width / 2);
   const cellH = Math.round(height / 2);
-  const cells = shots
-    .map((s) => {
-      const label = s.variant ? `${s.id} ${JSON.stringify(s.variant)}` : s.id;
-      return `<figure><img src="data:image/png;base64,${s.png.toString('base64')}"><figcaption>${label.replace(/</g, '&lt;')}</figcaption></figure>`;
-    })
+  const html = cells
+    .map((c) => `<figure><img src="data:image/png;base64,${c.png.toString('base64')}"><figcaption>${c.label.replace(/</g, '&lt;')}</figcaption></figure>`)
     .join('');
-  await page.setViewportSize({ width: cols * cellW, height: Math.ceil(shots.length / cols) * (cellH + 22) });
+  await page.setViewportSize({ width: cols * cellW, height: Math.ceil(cells.length / cols) * (cellH + 22) });
   await page.setContent(`<style>
     body{margin:0;display:grid;grid-template-columns:repeat(${cols},${cellW}px);background:#111;font:12px monospace;color:#ddd}
     figure{margin:0}img{width:${cellW}px;height:${cellH}px;display:block}figcaption{height:22px;line-height:22px;padding:0 6px;overflow:hidden;white-space:nowrap}
-  </style>${cells}`);
+  </style>${html}`);
   await page.screenshot({ path: resolve(outDir, 'sheet.png'), fullPage: true });
 }
 
 await browser.close();
 await server?.close();
 
-const report = shots.map(({ png, ...rest }) => rest);
+const report = shots.map(({ png, frames, ...rest }) => ({ ...rest, frameTimes: frames?.map((f) => f.time) }));
 await writeFile(resolve(outDir, 'report.json'), JSON.stringify({ url: baseUrl, t: Number(args.t), shots: report }, null, 2));
 
 let failed = false;
@@ -202,11 +229,15 @@ for (const s of report) {
   const status = s.errors.length ? 'ERROR' : s.blank ? 'BLANK' : 'ok';
   if (s.errors.length || s.blank) failed = true;
   const st = s.stats ?? {};
-  console.log(`${status.padEnd(5)} ${s.id}${s.variant ? ` ${JSON.stringify(s.variant)}` : ''}  ${st.backend} ${st.drawCalls} draws ${st.triangles} tris  ${s.ms} ms  -> ${s.file}`);
+  const gpu = typeof st.gpuMs === 'number' ? `gpu ${st.gpuMs.toFixed(2)} ms ` : '';
+  console.log(`${status.padEnd(5)} ${s.id}${s.variant ? ` ${JSON.stringify(s.variant)}` : ''}  ${st.backend} ${st.drawCalls} draws ${st.triangles} tris ${gpu}cpu ${st.cpuMs?.toFixed(2)} ms  ${s.ms} ms  -> ${s.file}${s.gif ? ` + ${s.gif}` : ''}`);
+  // Headless frame timings are software rendering; only report timing budgets for --headed runs.
+  const over = (st.overBudget ?? []).filter((k) => args.headed || (k !== 'frame' && k !== 'gpu'));
+  if (over.length) console.log(`      over budget: ${over.join(', ')}`);
   for (const e of s.errors) console.log(`      error: ${e.split('\n')[0]}`);
   for (const w of s.warnings.slice(0, 3)) console.log(`      warn:  ${w.split('\n')[0]}`);
 }
-if (shots.length > 1) console.log(`sheet -> ${resolve(outDir, 'sheet.png')}`);
+if (cells.length > 1) console.log(`sheet -> ${resolve(outDir, 'sheet.png')}`);
 if (report.some((s) => s.webgpuFallback)) {
   console.log('note: WebGPU gave no readable image in this browser, so captures used the WebGL2 backend. Try --headed or --channel chrome for WebGPU.');
 }

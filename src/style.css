@@ -57,6 +57,8 @@ body.browser-hidden #info {
   left: 12px;
 }
 
+#perf[hidden],
+body.shot #perf,
 #transport[hidden],
 body.shot #transport,
 #info[hidden],
@@ -76,12 +78,6 @@ body.shot .lil-gui {
 #info p {
   margin: 0 0 8px;
   color: #a7adb6;
-}
-
-#stats {
-  margin-top: 8px;
-  color: #8a9099;
-  font: 11px ui-monospace, monospace;
 }
 
 .badges {
@@ -262,6 +258,7 @@ body[data-error]::after {
   top: 10px;
   left: calc(var(--browser-width) + (100vw - var(--browser-width) - 320px) / 2);
   transform: translateX(-50%);
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -293,6 +290,7 @@ body.browser-hidden #transport {
 
 #transport button.play {
   color: #6fd08a;
+  letter-spacing: -0.15em;
 }
 
 #transport.paused button.play {
@@ -326,4 +324,204 @@ body.browser-hidden #transport {
 #transport .speeds button.active {
   border-color: #5fa8ff;
   color: #5fa8ff;
+}
+
+/* Perf HUD (top left of the viewport) */
+#perf {
+  position: fixed;
+  top: 52px;
+  left: calc(var(--browser-width) + 10px);
+  width: 220px;
+  padding: 6px 8px;
+  background: rgba(20, 22, 26, 0.82);
+  border: 1px solid #33363c;
+  border-radius: 6px;
+  font: 11px/1.5 ui-monospace, monospace;
+}
+
+body.browser-hidden #perf {
+  left: 10px;
+}
+
+#perf.warn {
+  border-color: #ffb347;
+}
+
+#perf .rows > div {
+  display: flex;
+  gap: 6px;
+}
+
+#perf span {
+  flex: 1;
+  color: #8a9099;
+}
+
+#perf b {
+  font-weight: 600;
+}
+
+#perf i {
+  color: #6a7079;
+  font-style: normal;
+}
+
+#perf .over b {
+  color: #ff7a59;
+}
+
+#perf canvas {
+  display: block;
+  margin: 6px 0;
+  border-radius: 3px;
+}
+
+#perf select {
+  width: 100%;
+  background: #16181b;
+  color: #d6d9de;
+  border: 1px solid #3a3e45;
+  border-radius: 3px;
+  font: inherit;
+}
+
+/* Camera bookmarks (in the transport bar) */
+#transport .bookmarks {
+  display: flex;
+  gap: 1px;
+  margin-left: 6px;
+  padding-left: 6px;
+  border-left: 1px solid #33363c;
+}
+
+#transport .bookmarks button {
+  min-width: 20px;
+  padding: 3px 4px;
+  color: #4a4f57;
+}
+
+#transport .bookmarks button.default {
+  color: #8a9099;
+}
+
+#transport .bookmarks button.set {
+  color: #ffb347;
+}
+
+/* Scene thumbnails in the browser rows */
+.row.scene .sthumb {
+  flex: none;
+  width: 40px;
+  height: 23px;
+  border-radius: 2px;
+  background: #16181b center / cover no-repeat;
+}
+
+/* Presets (bottom of the left pane) */
+.presets {
+  max-height: 42%;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #33363c;
+}
+
+.presets[hidden] {
+  display: none;
+}
+
+.presets-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px 6px;
+  color: #8a9099;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.presets-head span {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.presets-head button {
+  white-space: nowrap;
+  padding: 2px 6px;
+  background: #2a2e34;
+  border: 1px solid #3a3e45;
+  border-radius: 3px;
+  color: #d6d9de;
+  font: 11px ui-sans-serif, system-ui, sans-serif;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.presets-grid {
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+
+.preset {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px;
+  background: #16181b;
+  border: 1px solid #33363c;
+  border-radius: 4px;
+  color: inherit;
+  font: 11px ui-sans-serif, system-ui, sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.preset:hover {
+  border-color: #5fa8ff;
+}
+
+.preset .thumb {
+  aspect-ratio: 16 / 9;
+  border-radius: 2px;
+  background: #23262b center / cover no-repeat;
+}
+
+.preset .name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.preset .tag,
+.preset .delete {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: rgba(20, 22, 26, 0.85);
+  font-size: 10px;
+}
+
+.preset .tag {
+  color: #6fb2ff;
+}
+
+.preset .delete {
+  display: none;
+  color: #ff7a59;
+}
+
+.preset:hover .delete {
+  display: block;
+}
+
+.presets-empty {
+  grid-column: 1 / -1;
+  color: #6a7079;
 }

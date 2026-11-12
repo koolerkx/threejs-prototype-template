@@ -30,7 +30,7 @@ export class Transport {
 
     const restart = button('⏮', 'Restart at 0 s (Home)', () => clock.set({ time: 0 }));
     const back = button('◁|', 'Step back one frame (,)', () => clock.step(-1));
-    this.playButton = button('⏸', 'Play / pause (Space)', () => clock.togglePause());
+    this.playButton = button('▮▮', 'Play / pause (Space)', () => clock.togglePause());
     this.playButton.className = 'play';
     const forward = button('|▷', 'Step forward one frame (.)', () => clock.step(1));
 
@@ -57,6 +57,11 @@ export class Transport {
     this.sync();
   }
 
+  /** Adds a section (e.g. camera bookmarks) to the bar. */
+  append(element: HTMLElement): void {
+    this.root.append(element);
+  }
+
   setVisible(visible: boolean): void {
     this.root.hidden = !visible;
   }
@@ -70,7 +75,7 @@ export class Transport {
 
   private sync(): void {
     const { paused, speed } = this.clock.state;
-    this.playButton.textContent = paused ? '▶' : '⏸';
+    this.playButton.textContent = paused ? '▶' : '▮▮'; // ▮▮ renders in fonts that lack ⏸
     this.root.classList.toggle('paused', paused);
     this.speedButtons.forEach((b, i) => b.classList.toggle('active', Math.abs(SPEED_BUTTONS[i] - speed) < 1e-6));
     this.update();

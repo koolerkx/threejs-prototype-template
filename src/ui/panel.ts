@@ -15,9 +15,17 @@ const TIER_HINT: Record<PortTier, string> = {
   extra: 'more than one material: meshes, particles, post, scripts',
 };
 
+export interface CaptureSettings {
+  duration: number;
+  fps: number;
+  width: number;
+}
+
 export interface PanelActions {
   onParamsChanged(): void;
   savePng(): void;
+  /** Records a GIF from the current time; `progress` receives 0..1. */
+  recordGif(settings: CaptureSettings, progress: (t: number) => void): Promise<void>;
 }
 
 // lil-gui typings bind each controller to its property's type; the schema is dynamic, so use a loose view.
@@ -69,7 +77,6 @@ export class Panel {
   private readonly quick = { backdrop: 'none' };
   private readonly backdropController: Controller;
   private readonly info = document.getElementById('info')!;
-  private readonly statsEl = document.getElementById('stats')!;
 
   constructor(private readonly runner: ExperimentRunner, private readonly stage: Stage, private readonly actions: PanelActions) {
     // Quick backdrop switch at the top; the full set lives in the Stage folder.
@@ -87,6 +94,22 @@ export class Panel {
     tools.add({ copy: () => void this.copyParams() }, 'copy').name('Copy params JSON');
     tools.add({ png: () => actions.savePng() }, 'png').name('Save PNG');
     tools.close();
+
+    const capture = this.gui.addFolder('Capture GIF');
+    const settings: CaptureSettings = { duration: 2, fps: 15, width: 480 };
+    capture.add(settings, 'duration', 0.2, 20, 0.1).name('Duration (s)');
+    capture.add(settings, 'fps', 5, 30, 1).name('FPS');
+    capture.add(settings, 'width', 160, 1280, 16).name('Width (px)');
+    const recordButton = capture.add({ record: () => {} }, 'record').name('Record GIF from current time');
+    recordButton.onChange(async () => {
+      recordButton.disable();
+      try {
+        await actions.recordGif(settings, (t) => recordButton.name(`Recording… ${Math.round(t * 100)}%`));
+      } finally {
+        recordButton.name('Record GIF from current time').enable();
+      }
+    });
+    capture.close();
 
     const stageFolder = this.gui.addFolder('Stage');
     this.stageControllers = addControllers(stageFolder, STAGE_SCHEMA as unknown as ParamSchema, stage.state as unknown as ParamState<ParamSchema>, (key, value) => {
@@ -146,10 +169,6 @@ export class Panel {
     this.backdropController.updateDisplay();
   }
 
-  setStats(text: string): void {
-    this.statsEl.textContent = text;
-  }
-
   private renderInfo(): void {
     const cur = this.runner.current;
     if (!cur) return;
@@ -171,7 +190,7 @@ export class Panel {
       badges.append(b);
     }
     card.append(title, desc, badges);
-    this.info.replaceChildren(card, this.statsEl);
+    this.info.replaceChildren(card);
   }
 
   private resetParams(): void {

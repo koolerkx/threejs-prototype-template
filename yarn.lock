@@ -572,6 +572,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"gifenc@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "gifenc@npm:1.0.3"
+  checksum: 10c0/34fc6b2c66c305fc556cd2f475154ce2ad68384a52ceb8253b901c8c7d9c63f2c0a5d109ceb3cb46e44c2c6155009920a286cf08a621105863aa43468e345229
+  languageName: node
+  linkType: hard
+
 "graceful-fs@npm:^4.2.6":
   version: 4.2.11
   resolution: "graceful-fs@npm:4.2.11"
@@ -966,6 +973,7 @@ __metadata:
     "@playwright/test": "npm:^1.64"
     "@types/node": "npm:^22"
     "@types/three": "npm:0.187.0"
+    gifenc: "npm:^1.0.3"
     three: "npm:0.187.0"
     typescript: "npm:^7"
     vite: "npm:^8"

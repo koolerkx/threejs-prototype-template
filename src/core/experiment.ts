@@ -1,5 +1,6 @@
 import type { Group, PerspectiveCamera, UniformNode, WebGPURenderer } from 'three/webgpu';
 import type { ParamSchema, ParamUniforms, ParamValues } from './params';
+import type { Budget } from './perf';
 import type { StageSettings } from './stage';
 
 /**
@@ -69,6 +70,10 @@ export interface ExperimentDef<S extends ParamSchema = ParamSchema> {
   camera?: { position: Vec3Tuple; target: Vec3Tuple; fovDeg?: number };
   /** Stage overrides applied when the experiment loads (lighting, post, background). */
   stage?: Partial<StageSettings>;
+  /** Default camera bookmarks for slots 1, 2, ... (keys 1-9). User-saved slots take precedence. */
+  bookmarks?: { position: Vec3Tuple; target: Vec3Tuple; fovDeg?: number }[];
+  /** Overrides of the selected performance budget (perf HUD), e.g. `{ drawCalls: 50 }` for a VFX test. */
+  budget?: Partial<Budget>;
   setup(ctx: ExperimentContext<S>): ExperimentInstance | void | Promise<ExperimentInstance | void>;
 }
 

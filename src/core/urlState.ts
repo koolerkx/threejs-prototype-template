@@ -7,6 +7,8 @@ import type { AnyParamValues } from './params';
 //   &t=<seconds>         freeze experiment time (deterministic capture)
 //   &shot=1              capture mode: hide UI, no URL sync
 //   &webgl=1             force the WebGL2 backend (compare against WebGPU, or work around a driver issue)
+//   &cam=<1-9>           start from camera bookmark n
+//   &camera=<json>       start from {"position":[x,y,z],"target":[x,y,z],"fovDeg":45}
 export interface UrlState {
   exp: string | null;
   params: AnyParamValues;
@@ -14,6 +16,8 @@ export interface UrlState {
   frozenTime: number | null;
   shot: boolean;
   forceWebGL: boolean;
+  cam: number | null;
+  camera: AnyParamValues;
 }
 
 function parseJson(raw: string | null): AnyParamValues {
@@ -38,6 +42,8 @@ export function readUrlState(): UrlState {
     frozenTime: frozen !== null && Number.isFinite(frozen) ? frozen : null,
     shot: q.get('shot') === '1',
     forceWebGL: q.get('webgl') === '1',
+    cam: /^[1-9]$/.test(q.get('cam') ?? '') ? Number(q.get('cam')) : null,
+    camera: parseJson(q.get('camera')),
   };
 }
 
