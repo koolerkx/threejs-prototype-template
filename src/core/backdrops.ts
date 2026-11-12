@@ -9,6 +9,7 @@ import {
 } from 'three/tsl';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js';
+import { loadHdri } from './hdri';
 
 // Backdrops are what surrounds an experiment: background, sky light (IBL) and optional set geometry.
 // Each maps to a typical engine setup so a look can be judged in context:
@@ -17,13 +18,16 @@ import { SkyMesh } from 'three/addons/objects/SkyMesh.js';
 //   sky     - physical sky (Preetham, like UE SkyAtmosphere / Unity procedural skybox), IBL from the sky
 //   space   - starfield and faint nebula dome, dark IBL from the dome
 //   outdoor - physical sky + ground plane and horizon fog
-export const BACKDROPS = ['none', 'stage', 'sky', 'space', 'outdoor'] as const;
+//   hdri    - equirectangular HDRI from src/assets/hdri/ as background and IBL (UE HDRI Backdrop, Unity HDRI Sky)
+export const BACKDROPS = ['none', 'stage', 'sky', 'space', 'outdoor', 'hdri'] as const;
 export type BackdropName = (typeof BACKDROPS)[number];
 
 export interface BackdropOptions {
   background: string;
   stageColor: string;
   sunDirection: Vector3;
+  hdri: string;
+  hdriBlur: number;
 }
 
 export interface Backdrop {
@@ -33,6 +37,8 @@ export interface Backdrop {
   readonly usesSun: boolean;
   /** Re-renders the IBL; called when the sun direction changes for sky-based backdrops. */
   environment(opts: BackdropOptions): Texture | null;
+  /** Changes when the IBL must be rebuilt for reasons other than the sun (e.g. an HDRI finished loading). */
+  envVersion?(opts: BackdropOptions): string;
   apply(scene: Scene, opts: BackdropOptions): void;
   dispose(): void;
 }
@@ -139,7 +145,8 @@ export class BackdropLibrary {
   private skyEnv: Texture | null = null;
   private readonly cache = new Map<BackdropName, Backdrop>();
 
-  constructor(private readonly renderer: WebGPURenderer) {
+  /** `onAsyncReady` runs when an asynchronous resource (HDRI) finishes loading, so the stage can re-apply. */
+  constructor(private readonly renderer: WebGPURenderer, private readonly onAsyncReady: () => void = () => {}) {
     this.pmrem = new PMREMGenerator(renderer);
     this.roomEnv = this.pmrem.fromScene(new RoomEnvironment(), ENV_SIGMA).texture;
   }
@@ -210,6 +217,37 @@ export class BackdropLibrary {
             scene.fog = outdoor ? fog : null;
           },
           dispose: () => disposeGroup(object),
+        };
+      }
+
+      case 'hdri': {
+        let loaded: { name: string; texture: Texture; env: Texture } | null = null;
+        let requested = '';
+        const request = (name: string) => {
+          if (name === requested) return;
+          requested = name;
+          loadHdri(name)
+            .then((texture) => {
+              if (requested !== name) return;
+              const previous = loaded;
+              loaded = { name, texture, env: this.pmrem.fromEquirectangular(texture).texture };
+              previous?.env.dispose();
+              this.onAsyncReady();
+            })
+            .catch((err) => console.error('[backdrop] HDRI load failed', err));
+        };
+        return {
+          object, hasGround: false, usesSun: false,
+          environment: (o) => (loaded?.name === o.hdri ? loaded.env : room),
+          envVersion: (o) => (loaded?.name === o.hdri ? `hdri:${o.hdri}` : 'hdri:loading'),
+          apply: (scene, o) => {
+            request(o.hdri);
+            const ready = loaded?.name === o.hdri;
+            scene.background = ready ? loaded!.texture : new Color(o.background);
+            scene.backgroundBlurriness = o.hdriBlur;
+            scene.fog = null;
+          },
+          dispose: () => loaded?.env.dispose(),
         };
       }
 
