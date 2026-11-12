@@ -161,6 +161,7 @@ export class SceneBrowser {
       saveCollapsed(this.collapsed);
       this.render();
     });
+    row.addEventListener('mouseup', () => row.blur());
     return row;
   }
 
@@ -195,7 +196,10 @@ export class SceneBrowser {
       dots.append(d);
     }
     row.append(icon, text, dots);
-    row.addEventListener('click', () => this.onOpen(entry.id));
+    row.addEventListener('click', () => {
+      row.blur(); // keep Space for the time transport
+      this.onOpen(entry.id);
+    });
     return row;
   }
 

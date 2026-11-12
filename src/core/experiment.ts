@@ -23,9 +23,12 @@ export type PortNotes = Partial<Record<EngineId, PortNote>>;
 export type Vec3Tuple = readonly [number, number, number];
 
 export interface FrameInfo {
-  /** Seconds since the experiment started; frozen when the page has `?t=`. Use this, not wall-clock time. */
+  /**
+   * Experiment time in seconds, driven by the transport (pause, speed, seek, frame step; `?t=` starts paused).
+   * Prefer functions of `time` over accumulating `delta`, so seeking and stepping back stay correct.
+   */
   time: number;
-  /** Seconds since the previous frame; 0 when time is frozen. */
+  /** Seconds since the previous frame after speed scaling; 0 when paused, negative on a step back. */
   delta: number;
   frame: number;
 }

@@ -44,7 +44,7 @@ const TONE_MAPPINGS: Record<StageSettings['toneMapping'], ToneMapping> = {
 };
 
 const SUN_DISTANCE = 10; // m
-const SHADOW_EXTENT = 4; // m, half size of the shadow camera
+const SHADOW_EXTENT = 8; // m, half size of the shadow camera
 const SKY_ENV_DELAY_MS = 150; // debounce for re-baking the sky IBL while dragging the sun
 
 export class Stage {
@@ -60,6 +60,8 @@ export class Stage {
   private readonly scenePass;
   private readonly bloomPass;
   private backdrop: Backdrop | null = null;
+  private readonly focus = new Vector3();
+  private readonly sunDirection = new Vector3(0, 1, 0);
   private bloomOn: boolean | undefined;
   private envKey = '';
   private envTimer = 0;
@@ -77,7 +79,7 @@ export class Stage {
 
     this.shadowCatcher = new Mesh(new PlaneGeometry(40, 40).rotateX(-Math.PI / 2), new ShadowMaterial({ opacity: 0.35 }));
     this.shadowCatcher.receiveShadow = true;
-    this.grid.position.y = 0.002; // above the shadow catcher and the stage pedestal
+    this.grid.position.y = 0.002; // above the shadow catcher and the stage floor disc
     this.scene.add(this.shadowCatcher, this.grid);
 
     this.scenePass = pass(this.scene, camera);
@@ -99,7 +101,8 @@ export class Stage {
     const elev = v.sunElevationDeg * DEG2RAD;
     const azim = v.sunAzimuthDeg * DEG2RAD;
     const sunDirection = new Vector3(Math.cos(elev) * Math.sin(azim), Math.sin(elev), Math.cos(elev) * Math.cos(azim));
-    this.sun.position.copy(sunDirection).multiplyScalar(SUN_DISTANCE);
+    this.sunDirection.copy(sunDirection);
+    this.placeSun();
     this.sun.intensity = v.sunIntensity;
     this.sun.color.set(v.sunColor);
     this.sun.castShadow = v.shadows;
@@ -131,6 +134,18 @@ export class Stage {
 
   render(): void {
     this.pipeline.render();
+  }
+
+  /** Centres the sun's shadow camera on the orbit target, so shadows stay valid wherever the view goes. */
+  setFocus(target: Vector3): void {
+    if (this.focus.distanceToSquared(target) < 1e-6) return;
+    this.focus.copy(target);
+    this.placeSun();
+  }
+
+  private placeSun(): void {
+    this.sun.target.position.copy(this.focus);
+    this.sun.position.copy(this.sunDirection).multiplyScalar(SUN_DISTANCE).add(this.focus);
   }
 
   private updateEnvironment(backdrop: Backdrop, opts: BackdropOptions): void {

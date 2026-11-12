@@ -8,10 +8,13 @@ import { readUrlState, writeUrlState } from './core/urlState';
 import { installDebugApi, type FrameSignal } from './harness/debugApi';
 import { Panel } from './ui/panel';
 import { SceneBrowser } from './ui/sceneBrowser';
+import { Transport } from './ui/transport';
 import './style.css';
 
 const MAX_PIXEL_RATIO = 2;
 const URL_SYNC_DELAY_MS = 300;
+/** Opened when the URL names no experiment. */
+const DEFAULT_EXPERIMENT = 'reference/pbr-calibration';
 
 async function main(): Promise<void> {
   const url = readUrlState();
@@ -29,10 +32,10 @@ async function main(): Promise<void> {
 
   const stage = new Stage(renderer, camera);
   const runner = new ExperimentRunner(renderer, camera, controls, stage);
-  const clock = new ExperimentClock(url.frozenTime);
+  const clock = new ExperimentClock(url.frozenTime ?? 0, url.frozenTime !== null);
   const signal: FrameSignal = { frame: 0, fps: 0, waiters: [] };
   let panel: Panel | null = null;
-  const api = installDebugApi(renderer, runner, stage, signal, () => panel?.syncStage());
+  const api = installDebugApi(renderer, runner, stage, clock, signal, () => panel?.syncStage());
 
   let urlTimer = 0;
   const syncUrl = () => {
@@ -59,9 +62,11 @@ async function main(): Promise<void> {
       a.click();
     },
   });
+  const transport = new Transport(clock);
   const setUiVisible = (visible: boolean) => {
     panel?.setVisible(visible);
     browser.setVisible(visible);
+    transport.setVisible(visible);
   };
   setUiVisible(!url.shot);
   runner.onChange(() => clock.reset());
@@ -77,11 +82,10 @@ async function main(): Promise<void> {
 
   addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement) return;
-    if (e.code === 'Space') clock.paused = !clock.paused;
     if (e.code === 'KeyH') setUiVisible(!document.body.classList.toggle('ui-hidden'));
   });
 
-  const first = findExperiment(url.exp) ?? EXPERIMENTS[0];
+  const first = findExperiment(url.exp) ?? findExperiment(DEFAULT_EXPERIMENT) ?? EXPERIMENTS[0];
   if (!first) throw new Error('No experiments found under src/experiments/.');
   if (url.exp && first.id !== url.exp) console.warn(`[main] unknown experiment "${url.exp}", loaded "${first.id}"`);
   await runner.load(first, url.params, url.stage);
@@ -93,8 +97,10 @@ async function main(): Promise<void> {
   renderer.setAnimationLoop(() => {
     const frame = clock.tick();
     controls.update();
+    stage.setFocus(controls.target);
     runner.update(frame);
     stage.render();
+    transport.update();
 
     signal.frame++;
     const now = performance.now();
@@ -105,7 +111,7 @@ async function main(): Promise<void> {
       fpsAccum = 0;
       fpsFrames = 0;
       const s = api.stats();
-      panel?.setStats(`${s.backend} · ${s.fps} fps · ${s.drawCalls} draws · ${s.triangles.toLocaleString()} tris${clock.paused ? ' · paused' : ''}${clock.frozen ? ' · t frozen' : ''}`);
+      panel?.setStats(`${s.backend} · ${s.fps} fps · ${s.drawCalls} draws · ${s.triangles.toLocaleString()} tris`);
     }
     signal.waiters = signal.waiters.filter((w) => (signal.frame >= w.until ? (w.resolve(), false) : true));
   });

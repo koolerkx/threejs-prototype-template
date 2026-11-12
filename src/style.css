@@ -57,6 +57,8 @@ body.browser-hidden #info {
   left: 12px;
 }
 
+#transport[hidden],
+body.shot #transport,
 #info[hidden],
 #browser[hidden],
 body.shot #browser,
@@ -252,4 +254,76 @@ body[data-error]::after {
 .browser-empty {
   padding: 10px 12px;
   color: #6a7079;
+}
+
+/* Time transport (top centre of the viewport) */
+#transport {
+  position: fixed;
+  top: 10px;
+  left: calc(var(--browser-width) + (100vw - var(--browser-width) - 320px) / 2);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: rgba(20, 22, 26, 0.82);
+  border: 1px solid #33363c;
+  border-radius: 6px;
+  font: 12px ui-monospace, monospace;
+}
+
+body.browser-hidden #transport {
+  left: calc((100vw - 320px) / 2);
+}
+
+#transport button {
+  min-width: 26px;
+  padding: 3px 6px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #d6d9de;
+  font: inherit;
+  cursor: pointer;
+}
+
+#transport button:hover {
+  background: #2f333a;
+}
+
+#transport button.play {
+  color: #6fd08a;
+}
+
+#transport.paused button.play {
+  color: #ffb347;
+}
+
+#transport input {
+  width: 64px;
+  margin-left: 6px;
+  padding: 2px 4px;
+  background: #16181b;
+  color: #d6d9de;
+  border: 1px solid #3a3e45;
+  border-radius: 3px;
+  font: inherit;
+  text-align: right;
+}
+
+#transport .unit {
+  margin: 0 6px 0 2px;
+  color: #6a7079;
+}
+
+#transport .speeds {
+  display: flex;
+  gap: 1px;
+  padding-left: 6px;
+  border-left: 1px solid #33363c;
+}
+
+#transport .speeds button.active {
+  border-color: #5fa8ff;
+  color: #5fa8ff;
 }

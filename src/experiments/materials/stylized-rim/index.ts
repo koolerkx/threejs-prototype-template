@@ -1,13 +1,9 @@
-import { Mesh, MeshStandardNodeMaterial, SphereGeometry, TorusKnotGeometry, IcosahedronGeometry, type BufferGeometry } from 'three/webgpu';
+import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { mx_noise_float, normalLocal, positionLocal, sin, smoothstep, vec3 } from 'three/tsl';
 import { defineExperiment } from '@/core/experiment';
+import { DEG2RAD } from '@/core/units';
 import { fresnel } from '@/lib/nodes';
-
-const SHAPES: Record<string, () => BufferGeometry> = {
-  sphere: () => new SphereGeometry(0.6, 128, 64),
-  torusKnot: () => new TorusKnotGeometry(0.42, 0.14, 256, 48),
-  icosahedron: () => new IcosahedronGeometry(0.6, 6),
-};
+import { primitiveMesh, shapeParam } from '@/lib/primitives';
 
 // Example of a TSL look built only from nodes that exist in every target engine's graph editor:
 // Fresnel rim, noise-driven emissive bands and vertex wobble (UE World Position Offset).
@@ -29,7 +25,8 @@ export default defineExperiment({
     dx12: { tier: 'code', notes: ['Port mx_noise_float (MaterialX Perlin) to HLSL as a shared include.'] },
   },
   params: {
-    shape: { type: 'select', value: 'torusKnot', options: Object.keys(SHAPES), label: 'Shape' },
+    shape: shapeParam('torusKnot'),
+    spinSpeed: { type: 'number', value: 17, min: -180, max: 180, step: 1, unit: 'deg/s', label: 'Spin speed' },
     baseColor: { type: 'color', value: '#5b4bd6', label: 'Base color' },
     roughness: { type: 'number', value: 0.45, min: 0, max: 1, step: 0.01, label: 'Roughness' },
     metallic: { type: 'number', value: 0, min: 0, max: 1, step: 0.01, label: 'Metallic' },
@@ -64,13 +61,13 @@ export default defineExperiment({
     const wobble = sin(positionLocal.y.mul(u.wobbleFrequency).add(time.mul(3))).mul(u.wobbleAmount);
     material.positionNode = positionLocal.add(normalLocal.mul(wobble));
 
-    const mesh = new Mesh(SHAPES[params.shape](), material);
+    const mesh = primitiveMesh(params.shape, material, { size: 1.2, detail: 'high' });
     mesh.position.y = 0.9;
     root.add(mesh);
 
     return {
-      update({ delta }) {
-        mesh.rotation.y += delta * 0.3;
+      update({ time }) {
+        mesh.rotation.y = time * params.spinSpeed * DEG2RAD; // a function of time, so seek / step back work
       },
     };
   },

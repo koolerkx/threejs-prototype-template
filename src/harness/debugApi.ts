@@ -1,4 +1,5 @@
 import type { WebGPURenderer } from 'three/webgpu';
+import type { ClockState, ExperimentClock } from '../core/clock';
 import type { AnyParamValues, ParamValue } from '../core/params';
 import { EXPERIMENTS, findExperiment } from '../core/registry';
 import type { ExperimentRunner } from '../core/runner';
@@ -26,6 +27,8 @@ export interface ProtoApi {
   load(id: string, params?: AnyParamValues, stage?: AnyParamValues): Promise<boolean>;
   setParams(params: AnyParamValues): Promise<void>;
   setStage(stage: AnyParamValues): void;
+  /** Reads, and optionally changes, the experiment clock: `time({ paused: true, time: 2.5 })`, `time({ speed: 0.25 })`. */
+  time(patch?: Partial<ClockState>): ClockState;
   /** Resolves after `count` rendered frames (lets shaders compile and post settle). */
   frames(count?: number): Promise<void>;
   stats(): ProtoStats;
@@ -52,6 +55,7 @@ export function installDebugApi(
   renderer: WebGPURenderer,
   runner: ExperimentRunner,
   stage: Stage,
+  clock: ExperimentClock,
   signal: FrameSignal,
   onStageChanged: () => void = () => {},
 ): ProtoApi {
@@ -94,6 +98,10 @@ export function installDebugApi(
       for (const [k, v] of Object.entries(overrides)) stage.state.set(k, v as ParamValue);
       stage.apply();
       onStageChanged();
+    },
+    time: (patch) => {
+      if (patch) clock.set(patch);
+      return clock.state;
     },
     frames: (count = 2) => new Promise((resolve) => signal.waiters.push({ until: signal.frame + count, resolve })),
     capture: async () => {

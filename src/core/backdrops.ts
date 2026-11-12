@@ -1,5 +1,5 @@
 import {
-  BackSide, BufferGeometry, CircleGeometry, Color, CylinderGeometry, Float32BufferAttribute, Fog, Group, Mesh,
+  BackSide, BufferGeometry, CircleGeometry, Color, Float32BufferAttribute, Fog, Group, Mesh,
   MeshBasicNodeMaterial, MeshStandardNodeMaterial, PMREMGenerator, Scene, SphereGeometry, Vector3,
   type Node, type Texture, type WebGPURenderer,
 } from 'three/webgpu';
@@ -13,7 +13,7 @@ import { SkyMesh } from 'three/addons/objects/SkyMesh.js';
 // Backdrops are what surrounds an experiment: background, sky light (IBL) and optional set geometry.
 // Each maps to a typical engine setup so a look can be judged in context:
 //   none    - solid color + neutral studio IBL (UE/Unity empty level with a sky light cubemap)
-//   stage   - minimalist product stage: seamless cyclorama and a pedestal, studio IBL
+//   stage   - minimalist product stage: seamless cyclorama with a flush floor disc, studio IBL
 //   sky     - physical sky (Preetham, like UE SkyAtmosphere / Unity procedural skybox), IBL from the sky
 //   space   - starfield and faint nebula dome, dark IBL from the dome
 //   outdoor - physical sky + ground plane and horizon fog
@@ -174,19 +174,19 @@ export class BackdropLibrary {
       case 'stage': {
         const material = new MeshStandardNodeMaterial({ roughness: 0.85 });
         const cyc = new Mesh(createCycloramaGeometry(), material);
-        cyc.position.y = -0.08;
         cyc.receiveShadow = true;
-        const pedestal = new Mesh(new CylinderGeometry(1.2, 1.25, 0.08, 96), new MeshStandardNodeMaterial({ roughness: 0.6 }));
-        pedestal.position.y = -0.04; // top surface at y = 0
-        pedestal.receiveShadow = true;
-        pedestal.castShadow = true;
-        object.add(cyc, pedestal);
+        // A flush floor disc marks the centre without lifting anything off y = 0.
+        const spotMaterial = new MeshStandardNodeMaterial({ roughness: 0.6 });
+        const spot = new Mesh(new CircleGeometry(1.4, 96).rotateX(-Math.PI / 2), spotMaterial);
+        spot.position.y = 0.001;
+        spot.receiveShadow = true;
+        object.add(cyc, spot);
         return {
           object, hasGround: true, usesSun: false,
           environment: () => room,
           apply: (scene, o) => {
             material.color.set(o.stageColor);
-            (pedestal.material as MeshStandardNodeMaterial).color.set(o.stageColor).multiplyScalar(0.92);
+            spotMaterial.color.set(o.stageColor).multiplyScalar(1.12);
             scene.background = new Color(o.stageColor);
             scene.fog = null;
           },
