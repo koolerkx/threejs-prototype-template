@@ -15,8 +15,8 @@ Throwaway three.js prototype template for testing 3D graphics, gameplay visuals 
 ## Layout
 - `src/experiments/<folder>/<name>/index.ts` - one experiment per folder, auto-registered; the id is the folder path (`materials/stylized-rim`) and folders form the scene browser tree. `brief.md` beside it holds the question and findings. Paths with a `_` segment are skipped (`_template/` is the scaffold).
 - `src/core/` - harness: param schema → TSL uniforms, stage (sun, sky light, backdrops, tone mapping, bloom), runner, clock, URL state.
-- `src/lib/` - shared code with an engine twin: `nodes.ts` (TSL helpers), `curves.ts` (engine-neutral trajectory math), `lines.ts` (thick/dashed lines), `assets.ts` (glTF loading).
-- `src/ui/` - scene browser (left), lil-gui panel (right), info card. `src/harness/debugApi.ts` - `window.__proto`.
+- `src/lib/` - shared code with an engine twin: `primitives.ts` (engine-style basic shapes), `nodes.ts` (TSL helpers), `curves.ts` (engine-neutral trajectory math), `lines.ts` (thick/dashed lines), `assets.ts` (glTF loading).
+- `src/ui/` - scene browser (left), time transport (top), lil-gui panel (right), info card. `src/harness/debugApi.ts` - `window.__proto`.
 - `public/assets/` - asset files; record each source in its README.
 - `scripts/` - `shot.mjs` (capture), `new-experiment.mjs` (scaffold).
 
@@ -31,7 +31,8 @@ Throwaway three.js prototype template for testing 3D graphics, gameplay visuals 
 
 ## Experiment Rules
 - Every tunable is a `params` entry, read through `ctx.u.<name>` in TSL and `ctx.params.<name>` in JS. One param = one engine parameter; give units for physical values; degrees in params, radians in code.
-- Animate with `ctx.time` / `FrameInfo`, never the TSL `time` node or wall-clock time, so captures are reproducible.
+- Animate with `ctx.time` / `FrameInfo.time`, never the TSL `time` node or wall-clock time: the transport (pause, speed, seek, frame step) and captures depend on it. Prefer functions of `time` over accumulating `delta`, so seeking and stepping back stay correct.
+- Use `primitiveMesh()` / `shapeParam()` from `@/lib/primitives` for basic shapes, so sizes match engine primitives.
 - Materials: start from a lit node material and override its inputs; replacing the whole output or the lighting model pushes the port to `code`/`extra` - only do it when the experiment is about that.
 - Gameplay and logic: keep the math in plain functions with number tuples (like `src/lib/curves.ts`) so it ports line-for-line to C++/C#; draw it separately. Give branchy or numeric logic a small `*.test.ts`.
 - UI prototypes: build HTML in `ctx.overlay`; capture with `yarn shot --page`.

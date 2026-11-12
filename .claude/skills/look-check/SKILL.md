@@ -13,7 +13,8 @@ yarn shot --exp <id> --variants '[{"rimPower":1},{"rimPower":3},{"rimPower":6}]'
 yarn shot --exp <id> --variants '[{"$stage":{"backdrop":"sky"}},{"$stage":{"backdrop":"space"}}]'   # vary stage too
 yarn shot --exp <id> --stage '{"bloom":false,"backdrop":"stage"}'
 yarn shot --exp <id> --page                            # include the HTML overlay (UI prototypes)
-yarn shot --exp <id> --t 2.5                           # frozen time (default 1 s)
+yarn shot --exp <id> --t 2.5                           # paused at 2.5 s (default 1 s)
+yarn shot --exp <id> --variants '[{},{}]' --t 0.5      # same params, different moments: run once per --t
 yarn shot --all                                        # every experiment, smoke check
 yarn shot --exp <id> --headed                          # real GPU window, WebGPU capture
 ```
@@ -35,5 +36,5 @@ Then read the PNG (or `sheet.png`) with the file-reading tool. Always look; neve
 - Silhouette and motion: vertex offsets should not tear; capture two `--t` values to see motion.
 
 ## Interactive
-`yarn dev` → http://127.0.0.1:5173/?exp=<id>. `window.__proto` in the console: `list()`, `load(id, params)`, `setParams({...})`, `setStage({...})`, `stats()`, `capture()`.
-Keys: Space pauses time, H hides the UI.
+`yarn dev` → http://127.0.0.1:5173/?exp=<id>. `window.__proto` in the console: `list()`, `load(id, params)`, `setParams({...})`, `setStage({...})`, `time({ paused, time, speed })`, `frames(n)`, `stats()`, `capture()`.
+Transport bar (top): restart, frame step, play/pause, seek field, speed. Keys: Space play/pause, `,` `.` frame step, `[` `]` speed, Home restart, H hides the UI.

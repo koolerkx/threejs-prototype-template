@@ -19,7 +19,8 @@ One experiment = one folder `src/experiments/<folder>/<name>/` with `index.ts` (
   Mark a param `rebuild: true` when it changes geometry or material type; `select` params always rebuild.
 - Start from a lit node material (`MeshStandardNodeMaterial` / `MeshPhysicalNodeMaterial`) and override inputs:
   `colorNode`, `roughnessNode`, `metalnessNode`, `normalNode`, `emissiveNode`, `positionNode`, `opacityNode`.
-- Use `ctx.time` for animation (deterministic captures), never the TSL `time` node or `performance.now()`.
+- Use `ctx.time` / `update({ time })` for animation, never the TSL `time` node or `performance.now()`; the transport (pause, speed, seek, frame step) and captures depend on it. Write motion as a function of `time` rather than accumulating `delta`.
+- Basic shapes: `primitiveMesh(name, material, { onGround: true })` and `shapeParam('sphere')` from `@/lib/primitives` (1 m engine-style sizes).
 - Put objects under `ctx.root` and HTML under `ctx.overlay`; the harness clears both. Return `{ update, onParam, dispose }` only when needed.
 - Import with the `@/` alias (`@/core/experiment`, `@/lib/nodes`).
 - Choose the judging context with `stage: { backdrop: 'none' | 'stage' | 'sky' | 'space' | 'outdoor' }`.
