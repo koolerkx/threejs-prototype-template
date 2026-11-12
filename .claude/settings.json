@@ -23,5 +23,16 @@
       "WebFetch(domain:docs.unity3d.com)",
       "WebFetch(domain:docs.godotengine.org)"
     ]
+  },
+  "extraKnownMarketplaces": {
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "ponytail@ponytail": true
   }
 }

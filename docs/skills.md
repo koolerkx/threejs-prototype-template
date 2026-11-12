@@ -11,6 +11,17 @@ Claude Code and opencode both load `.claude/skills/<name>/SKILL.md`. This is the
 | `look-check` | `yarn shot` usage and what to check in captures |
 | `engine-port` | Port tiers, notes and port guides for UE5 / Unity / Godot / DX12 |
 
+## Plugin: ponytail
+
+[ponytail](https://github.com/DietrichGebert/ponytail) (MIT) keeps solutions minimal: YAGNI, no unrequested
+abstractions, `shortcut:` comments for deliberate shortcuts. It is referenced, not vendored:
+
+- Claude Code: `.claude/settings.json` registers the `DietrichGebert/ponytail` GitHub marketplace and enables
+  `ponytail@ponytail`. Claude Code asks to trust it the first time the folder is opened.
+- opencode (v1 config): `opencode.json` → `"plugin": ["@dietrichgebert/ponytail@5.3.3"]` (npm).
+
+Commands: `/ponytail [lite|full|ultra|off]`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`.
+
 ## Vendored third-party
 
 Copied unmodified at the commits below. Their three.js skills target r183-r186; this repo pins `three`, so verify an
@@ -34,9 +45,6 @@ API in `node_modules/three` before trusting an example. Licence files sit inside
 | `procedural-gen` | gamedev-skills/awesome-gamedev-agent-skills | Apache-2.0 | `25eec57` |
 | `godot-shaders` | gamedev-skills/awesome-gamedev-agent-skills | Apache-2.0 | `25eec57` |
 | `unreal-niagara` | gamedev-skills/awesome-gamedev-agent-skills | Apache-2.0 | `25eec57` |
-| `handoff` | mattpocock/skills | MIT | `4ae2317` |
-| `grill-me` | mattpocock/skills | MIT | `4ae2317` |
-| `grilling` | mattpocock/skills | MIT | `4ae2317` |
 | `diagnosing-bugs` | mattpocock/skills | MIT | `4ae2317` |
 
 To update one: clone the source repo, copy the skill folder over the existing one, and update the commit here.

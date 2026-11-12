@@ -21,8 +21,9 @@ For each engine the user cares about (UE5 and Unity by default; Godot and DX12 w
 3. If the look relies on Stage settings (bloom, tone mapping, sky light), note the engine-side equivalent.
 
 ## Write a port guide (when asked)
-Create `src/experiments/<id>/PORT.md`:
-- Parameters: table of name (PascalCase), type, default, range, unit - from the experiment's `params`.
+Create `PORT.md` in the experiment folder:
+- Parameters: table of name (PascalCase), type, default, range, unit - from the experiment's `params`. *Tools → Copy params JSON* in the page gives current values plus the `world` convention block.
+- Gameplay math (e.g. `src/lib/curves.ts`): give the C++ (UE) / C# (Unity) signature for each function; the tuple code ports line-for-line.
 - Node chain per target engine, in evaluation order, using the node names from the reference map.
 - Stage: tone mapping, sky light, sun direction (elevation/azimuth in degrees), bloom.
 - Differences to expect and how to judge them (calibration board first).

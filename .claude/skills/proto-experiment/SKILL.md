@@ -5,12 +5,12 @@ description: Create or iterate a visual experiment in this three.js prototype re
 
 # Prototype experiment loop
 
-One experiment = one folder `src/experiments/<id>/` with `index.ts` (the look) and `brief.md` (the question and findings).
+One experiment = one folder `src/experiments/<folder>/<name>/` with `index.ts` (the look) and `brief.md` (the question and findings). The id is the folder path; folders group scenes in the browser (`materials/`, `vfx/`, `gameplay/`, `ui/`, `reference/`).
 
 ## 1. Frame the question
 - Restate the visual question in one sentence and the target engine (UE5 / Unity / other).
 - Existing experiment that is close? Copy its folder instead of starting from `_template`.
-- New: `yarn new <kebab-id> --title "Readable title"`, then fill `brief.md` → Question, Reference, Target, Acceptance.
+- New: `yarn new <folder>/<kebab-name> --title "Readable title"`, then fill `brief.md` → Question, Reference, Target, Acceptance.
 - If the user supplied reference images, save them in `src/experiments/<id>/ref/` and note the source.
 
 ## 2. Build the smallest version that shows the effect
@@ -20,7 +20,12 @@ One experiment = one folder `src/experiments/<id>/` with `index.ts` (the look) a
 - Start from a lit node material (`MeshStandardNodeMaterial` / `MeshPhysicalNodeMaterial`) and override inputs:
   `colorNode`, `roughnessNode`, `metalnessNode`, `normalNode`, `emissiveNode`, `positionNode`, `opacityNode`.
 - Use `ctx.time` for animation (deterministic captures), never the TSL `time` node or `performance.now()`.
-- Put objects under `ctx.root`; the harness disposes them. Return `{ update, dispose }` only when needed.
+- Put objects under `ctx.root` and HTML under `ctx.overlay`; the harness clears both. Return `{ update, onParam, dispose }` only when needed.
+- Import with the `@/` alias (`@/core/experiment`, `@/lib/nodes`).
+- Choose the judging context with `stage: { backdrop: 'none' | 'stage' | 'sky' | 'space' | 'outdoor' }`.
+- Gameplay/logic experiments: math in plain functions with number tuples (see `src/lib/curves.ts`) plus a small `*.test.ts` (`yarn test`); draw with `src/lib/lines.ts`.
+- UI prototypes: HTML/CSS in `ctx.overlay`, capture with `yarn shot --page`.
+- Assets: put files in `public/assets/`, record the source in its README, load GLB with `loadGltf()` from `@/lib/assets`.
 - Shared helpers with an engine twin go in `src/lib/nodes.ts` (only once two experiments need them).
 - For TSL syntax and node names, load the `webgpu-threejs-tsl` skill; verify against `node_modules/three` (pinned version) when unsure.
 
