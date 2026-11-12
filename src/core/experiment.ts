@@ -41,6 +41,11 @@ export interface ExperimentContext<S extends ParamSchema> {
   u: ParamUniforms<S>;
   /** Deterministic time in seconds as a TSL uniform. Use instead of the TSL `time` node. */
   time: UniformNode<'float'>;
+  /**
+   * HTML layer over the viewport for prototype UI, labels and legends (pointer events off by default;
+   * set `pointer-events: auto` on interactive children). Cleared on unload.
+   */
+  overlay: HTMLElement;
 }
 
 export interface ExperimentInstance {

@@ -7,6 +7,7 @@ import { Stage } from './core/stage';
 import { readUrlState, writeUrlState } from './core/urlState';
 import { installDebugApi, type FrameSignal } from './harness/debugApi';
 import { Panel } from './ui/panel';
+import { SceneBrowser } from './ui/sceneBrowser';
 import './style.css';
 
 const MAX_PIXEL_RATIO = 2;
@@ -30,7 +31,8 @@ async function main(): Promise<void> {
   const runner = new ExperimentRunner(renderer, camera, controls, stage);
   const clock = new ExperimentClock(url.frozenTime);
   const signal: FrameSignal = { frame: 0, fps: 0, waiters: [] };
-  const api = installDebugApi(renderer, runner, stage, signal);
+  let panel: Panel | null = null;
+  const api = installDebugApi(renderer, runner, stage, signal, () => panel?.syncStage());
 
   let urlTimer = 0;
   const syncUrl = () => {
@@ -41,11 +43,13 @@ async function main(): Promise<void> {
     }, URL_SYNC_DELAY_MS);
   };
 
-  const panel = new Panel(runner, stage, {
-    onExperimentChange: (id) => {
-      const entry = findExperiment(id);
-      if (entry) void runner.load(entry).then(syncUrl);
-    },
+  const browser = new SceneBrowser((id) => {
+    const entry = findExperiment(id);
+    if (entry) void runner.load(entry).then(syncUrl);
+  });
+  runner.onChange(() => runner.current && browser.setActive(runner.current.entry.id));
+
+  panel = new Panel(runner, stage, {
     onParamsChanged: syncUrl,
     savePng: () => {
       stage.render(); // read back in the same task as the render; the canvas may be cleared afterwards
@@ -55,7 +59,11 @@ async function main(): Promise<void> {
       a.click();
     },
   });
-  panel.setVisible(!url.shot);
+  const setUiVisible = (visible: boolean) => {
+    panel?.setVisible(visible);
+    browser.setVisible(visible);
+  };
+  setUiVisible(!url.shot);
   runner.onChange(() => clock.reset());
 
   const resize = () => {
@@ -70,7 +78,7 @@ async function main(): Promise<void> {
   addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement) return;
     if (e.code === 'Space') clock.paused = !clock.paused;
-    if (e.code === 'KeyH') panel.setVisible(document.body.classList.toggle('ui-hidden') === false);
+    if (e.code === 'KeyH') setUiVisible(!document.body.classList.toggle('ui-hidden'));
   });
 
   const first = findExperiment(url.exp) ?? EXPERIMENTS[0];
@@ -97,7 +105,7 @@ async function main(): Promise<void> {
       fpsAccum = 0;
       fpsFrames = 0;
       const s = api.stats();
-      panel.setStats(`${s.backend} · ${s.fps} fps · ${s.drawCalls} draws · ${s.triangles.toLocaleString()} tris${clock.paused ? ' · paused' : ''}${clock.frozen ? ' · t frozen' : ''}`);
+      panel?.setStats(`${s.backend} · ${s.fps} fps · ${s.drawCalls} draws · ${s.triangles.toLocaleString()} tris${clock.paused ? ' · paused' : ''}${clock.frozen ? ' · t frozen' : ''}`);
     }
     signal.waiters = signal.waiters.filter((w) => (signal.frame >= w.until ? (w.resolve(), false) : true));
   });

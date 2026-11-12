@@ -1,8 +1,9 @@
 import { GUI, type Controller } from 'three/addons/libs/lil-gui.module.min.js';
 import type { EngineId, PortTier } from '../core/experiment';
 import type { ParamSchema, ParamState, ParamValue } from '../core/params';
-import { EXPERIMENTS, findExperiment } from '../core/registry';
+import { findExperiment } from '../core/registry';
 import type { ExperimentRunner } from '../core/runner';
+import { BACKDROPS } from '../core/backdrops';
 import { STAGE_SCHEMA, type Stage } from '../core/stage';
 
 const ENGINE_LABELS: Record<EngineId, string> = { ue: 'UE5', unity: 'Unity', godot: 'Godot', dx12: 'DX12' };
@@ -15,7 +16,6 @@ const TIER_HINT: Record<PortTier, string> = {
 };
 
 export interface PanelActions {
-  onExperimentChange(id: string): void;
   onParamsChanged(): void;
   savePng(): void;
 }
@@ -62,19 +62,25 @@ function addControllers(
 
 export class Panel {
   private readonly gui = new GUI({ title: 'Prototype', width: 320 });
-  private readonly selector = { experiment: '' };
   private paramsFolder: GUI | null = null;
+  private paramControllers: Controller[] = [];
   private readonly stageControllers: Controller[];
   private readonly toolsFolder: GUI;
+  private readonly quick = { backdrop: 'none' };
+  private readonly backdropController: Controller;
   private readonly info = document.getElementById('info')!;
   private readonly statsEl = document.getElementById('stats')!;
 
   constructor(private readonly runner: ExperimentRunner, private readonly stage: Stage, private readonly actions: PanelActions) {
-    const options = Object.fromEntries(EXPERIMENTS.map(({ id, def }) => [def.title, id]));
-    this.gui
-      .add(this.selector, 'experiment', options)
-      .name('Experiment')
-      .onChange((id: string) => actions.onExperimentChange(id));
+    // Quick backdrop switch at the top; the full set lives in the Stage folder.
+    this.backdropController = (this.gui as unknown as LooseGui)
+      .add(this.quick, 'backdrop', [...BACKDROPS])
+      .name('Backdrop')
+      .onChange((value: unknown) => {
+        stage.state.set('backdrop', value as string);
+        stage.apply();
+        this.syncStage();
+      });
 
     const tools = (this.toolsFolder = this.gui.addFolder('Tools'));
     tools.add({ reset: () => this.resetParams() }, 'reset').name('Reset params');
@@ -86,10 +92,12 @@ export class Panel {
     this.stageControllers = addControllers(stageFolder, STAGE_SCHEMA as unknown as ParamSchema, stage.state as unknown as ParamState<ParamSchema>, (key, value) => {
       stage.state.set(key, value);
       stage.apply();
+      if (key === 'backdrop') this.syncStage();
     });
     stageFolder.close();
 
     runner.onChange(() => this.refresh());
+    runner.onParamChange(() => this.syncParamControllers());
   }
 
   setVisible(visible: boolean): void {
@@ -101,26 +109,41 @@ export class Panel {
   refresh(): void {
     const cur = this.runner.current;
     if (!cur) return;
-    this.selector.experiment = cur.entry.id;
-    this.gui.controllersRecursive().forEach((c) => c.updateDisplay());
+    this.gui.title(cur.entry.def.title);
 
     this.paramsFolder?.destroy();
     this.paramsFolder = this.gui.addFolder('Params');
-    // Keep Params directly under the experiment selector.
+    // Keep Params at the top of the panel.
     this.toolsFolder.domElement.before(this.paramsFolder.domElement);
-    addControllers(this.paramsFolder, cur.entry.def.params, cur.state, (key, value) => {
+    this.paramControllers = addControllers(this.paramsFolder, cur.entry.def.params, cur.state, (key, value) => {
       this.runner.setParam(key, value);
       this.actions.onParamsChanged();
     });
 
-    // Stage folder reflects per-experiment overrides.
+    this.syncStage();
+    this.renderInfo();
+  }
+
+  private syncParamControllers(): void {
+    const values = this.runner.current?.state.values as Record<string, ParamValue> | undefined;
+    if (!values) return;
+    for (const c of this.paramControllers) {
+      const proxy = c.object as Record<string, ParamValue>;
+      if (proxy[c.property] === values[c.property]) continue;
+      proxy[c.property] = values[c.property];
+      c.updateDisplay();
+    }
+  }
+
+  /** Pulls stage values (per-experiment overrides, quick backdrop switch) into the GUI controllers. */
+  syncStage(): void {
     const stageValues = this.stage.state.values as Record<string, ParamValue>;
     for (const c of this.stageControllers) {
       (c.object as Record<string, ParamValue>)[c.property] = stageValues[c.property];
       c.updateDisplay();
     }
-
-    this.renderInfo();
+    this.quick.backdrop = this.stage.state.values.backdrop;
+    this.backdropController.updateDisplay();
   }
 
   setStats(text: string): void {
@@ -161,7 +184,14 @@ export class Panel {
   private async copyParams(): Promise<void> {
     const cur = this.runner.current;
     if (!cur) return;
-    const preset = { experiment: cur.entry.id, params: cur.state.values, stage: this.stage.state.values };
+    // `world` tells the engine side how to read positions and units (see docs/engine-port.md).
+    const preset = {
+      schemaVersion: 1,
+      experiment: cur.entry.id,
+      world: { units: 'meters', up: '+Y', handedness: 'right', forward: '-Z' },
+      params: cur.state.values,
+      stage: this.stage.state.values,
+    };
     const text = JSON.stringify(preset, null, 2);
     try {
       await navigator.clipboard.writeText(text);

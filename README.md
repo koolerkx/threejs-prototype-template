@@ -1,6 +1,6 @@
 # three.js prototype template
 
-A template for testing 3D graphics quickly with AI coding agents (Claude Code first, opencode compatible) and then rebuilding the result in a game engine (UE5 / Unity, with Godot 4 and plain DX12 as references).
+A template for testing 3D graphics, gameplay visuals (trajectories, curves) and UI quickly with AI coding agents (Claude Code first, opencode compatible) and then rebuilding the result in a game engine (UE5 / Unity, with Godot 4 and plain DX12 as references).
 
 Stack: TypeScript + Vite + `three/webgpu` (WebGPURenderer with WebGL2 fallback) + TSL node materials + lil-gui. Why: [docs/tech-stack.md](docs/tech-stack.md).
 
@@ -24,13 +24,15 @@ To start a new prototype from this template: copy the folder (or use it as a Git
 | `yarn dev` | Dev server with HMR |
 | `yarn typecheck` | TypeScript check (the required gate) |
 | `yarn shot --exp <id>` | Render in a browser → `.shots/<id>.png` + `report.json` |
-| `yarn shot --exp <id> --variants '[{"a":1},{"a":2}]'` | One capture per variant + `.shots/sheet.png` |
+| `yarn shot --exp <id> --variants '[{"a":1},{"$stage":{"backdrop":"sky"}}]'` | One capture per variant + `.shots/sheet.png` |
+| `yarn shot --exp <id> --page` | Composited page incl. the experiment's HTML overlay |
+| `yarn test` | Vitest for pure logic (`src/**/*.test.ts`) |
 | `yarn shot --all` | Capture every experiment (smoke check) |
 | `yarn check` | `typecheck` + `shot --all` |
-| `yarn new <id> --title "..."` | Scaffold `src/experiments/<id>/` |
+| `yarn new <folder>/<name> --title "..."` | Scaffold `src/experiments/<folder>/<name>/` |
 | `yarn build` / `yarn preview` | Static build in `dist/` |
 
-`yarn shot` options: `--params`, `--stage` (JSON), `--t <s>` frozen time, `--size 1280x720`, `--headed`, `--channel chrome`, `--webgl`, `--url <running server>`.
+`yarn shot` options: `--params`, `--stage` (JSON), `--t <s>` frozen time, `--size 1280x720`, `--headed`, `--channel chrome`, `--webgl`, `--page`, `--url <running server>`. Experiment ids are folder paths, e.g. `materials/stylized-rim`.
 
 ## Using it with an agent
 
@@ -41,9 +43,11 @@ Skills (in `.claude/skills/`, read by Claude Code and opencode): see [docs/skill
 
 ## Page
 
+- Left: scene browser, the folder tree of `src/experiments/`. Filter with `/`, move with ↑/↓, collapse/expand with ←/→. Dots show the UE5 / Unity port tier.
+- Right: Backdrop switch, Params (from the experiment's schema), Tools (reset, copy params JSON, save PNG), Stage (sun, sky light, tone mapping, bloom).
+- Backdrops: `none` (solid color), `stage` (minimalist cyclorama + pedestal), `sky` (physical sky), `space` (stars + nebula), `outdoor` (sky + ground + fog). Each also provides the sky-light IBL.
 - `?exp=<id>` selects an experiment; parameter changes are mirrored to `&params=` so the URL reproduces the view.
 - `&stage=<json>` overrides lighting/post, `&t=<s>` freezes time, `&shot=1` hides the UI, `&webgl=1` forces WebGL2.
-- Panel: experiment selector, Params (from the experiment's schema), Tools (reset, copy params JSON, save PNG), Stage.
 - Bottom-left card: description, port tier badges per engine (hover for notes), backend / fps / draw calls.
 - Keys: Space pauses time, H hides the UI. Console: `window.__proto` (`list`, `load`, `setParams`, `setStage`, `stats`, `capture`).
 
@@ -67,11 +71,22 @@ export default defineExperiment({
 });
 ```
 
-Examples: `pbr-calibration` (reference board to match engine lighting) and `stylized-rim` (Fresnel rim, noise bands, vertex wobble).
+`ctx.overlay` is an HTML layer over the viewport for prototype UI, labels and legends.
+
+Examples:
+- `reference/pbr-calibration` - metallic × roughness board to match engine lighting.
+- `materials/stylized-rim` - TSL Fresnel rim, noise bands, vertex wobble.
+- `gameplay/projectile-curves` - straight / mortar / Bezier trajectories as scrolling dashed lines; math in `src/lib/curves.ts` (tested, engine-neutral).
 
 ## Porting
 
 [docs/engine-port.md](docs/engine-port.md): port tiers, axis/unit conversion, lighting and tone mapping, material model and the TSL → UE / Unity / Godot / HLSL node map.
+
+## Files
+
+- `index.html` - Vite's entry point: the page shell (scene browser, viewport, overlay, info card) that loads `src/main.ts`. Vite serves it in dev and bundles from it in `yarn build`.
+- `public/assets/` - meshes and textures; record each source in its README. Load GLB with `loadGltf()` from `src/lib/assets.ts`.
+- `opencode.json` / `.claude/settings.json` - enable the ponytail plugin for opencode / Claude Code.
 
 ## Deploy
 

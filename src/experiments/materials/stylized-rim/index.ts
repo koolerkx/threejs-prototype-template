@@ -1,7 +1,7 @@
 import { Mesh, MeshStandardNodeMaterial, SphereGeometry, TorusKnotGeometry, IcosahedronGeometry, type BufferGeometry } from 'three/webgpu';
 import { mx_noise_float, normalLocal, positionLocal, sin, smoothstep, vec3 } from 'three/tsl';
-import { defineExperiment } from '../../core/experiment';
-import { fresnel } from '../../lib/nodes';
+import { defineExperiment } from '@/core/experiment';
+import { fresnel } from '@/lib/nodes';
 
 const SHAPES: Record<string, () => BufferGeometry> = {
   sphere: () => new SphereGeometry(0.6, 128, 64),
@@ -44,7 +44,7 @@ export default defineExperiment({
     wobbleFrequency: { type: 'number', value: 6, min: 0, max: 20, step: 0.1, unit: 'rad/m', label: 'Wobble frequency' },
   },
   camera: { position: [0, 1.3, 3], target: [0, 0.9, 0] },
-  stage: { bloom: true, bloomThreshold: 1 },
+  stage: { backdrop: 'space', bloom: true, bloomThreshold: 1 },
   setup({ root, params, u, time }) {
     const material = new MeshStandardNodeMaterial();
     material.colorNode = u.baseColor;

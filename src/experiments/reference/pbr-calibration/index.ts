@@ -1,6 +1,6 @@
 import { Mesh, MeshPhysicalNodeMaterial, SphereGeometry } from 'three/webgpu';
 import { float } from 'three/tsl';
-import { defineExperiment } from '../../core/experiment';
+import { defineExperiment } from '@/core/experiment';
 
 const GRID = 5; // spheres per row / column
 const SPACING = 0.55; // m

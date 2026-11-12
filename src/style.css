@@ -8,9 +8,31 @@ body {
   font: 12px/1.45 ui-sans-serif, system-ui, sans-serif;
 }
 
+:root {
+  --browser-width: 248px;
+}
+
 #viewport {
   position: fixed;
+  inset: 0 0 0 var(--browser-width);
+}
+
+#overlay {
+  position: fixed;
+  inset: 0 0 0 var(--browser-width);
+  pointer-events: none;
+}
+
+.experiment-overlay {
+  position: absolute;
   inset: 0;
+}
+
+body.shot #viewport,
+body.shot #overlay,
+body.browser-hidden #viewport,
+body.browser-hidden #overlay {
+  left: 0;
 }
 
 #viewport canvas {
@@ -21,7 +43,7 @@ body {
 
 #info {
   position: fixed;
-  left: 12px;
+  left: calc(var(--browser-width) + 12px);
   bottom: 12px;
   max-width: 420px;
   padding: 10px 12px;
@@ -31,7 +53,13 @@ body {
   pointer-events: auto;
 }
 
+body.browser-hidden #info {
+  left: 12px;
+}
+
 #info[hidden],
+#browser[hidden],
+body.shot #browser,
 body.shot #info,
 body.shot .lil-gui {
   display: none !important;
@@ -85,4 +113,143 @@ body[data-error]::after {
   color: #ffd6d6;
   border-radius: 4px;
   white-space: pre-wrap;
+}
+
+/* Scene browser (file-tree style) */
+#browser {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--browser-width);
+  display: flex;
+  flex-direction: column;
+  background: #1f2226;
+  border-right: 1px solid #33363c;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.browser-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid #33363c;
+  color: #8a9099;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.browser-head input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 6px;
+  background: #16181b;
+  color: #d6d9de;
+  border: 1px solid #3a3e45;
+  border-radius: 3px;
+  font: 12px ui-sans-serif, system-ui, sans-serif;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.browser-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 0 12px;
+}
+
+.browser-list .row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 8px;
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.browser-list .row:hover {
+  background: #2a2e34;
+}
+
+.browser-list .row:focus-visible {
+  outline: 1px solid #5fa8ff;
+  outline-offset: -1px;
+}
+
+.row.folder {
+  color: #a7adb6;
+}
+
+.row .chevron {
+  width: 10px;
+  color: #6a7079;
+  font-size: 10px;
+}
+
+.row .icon {
+  width: 12px;
+  color: #6a7079;
+  font-size: 10px;
+  text-align: center;
+}
+
+.row.folder .name {
+  flex: 1;
+}
+
+.row .count {
+  color: #6a7079;
+  font-size: 10px;
+}
+
+.row.scene .text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.row.scene .name,
+.row.scene .file {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row.scene .file {
+  color: #6a7079;
+  font: 10px ui-monospace, monospace;
+}
+
+.row.scene.active {
+  background: #263243;
+  border-left-color: #5fa8ff;
+}
+
+.row.scene.active .icon {
+  color: #5fa8ff;
+}
+
+.row .dots {
+  display: flex;
+  gap: 3px;
+}
+
+.row .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.browser-empty {
+  padding: 10px 12px;
+  color: #6a7079;
 }

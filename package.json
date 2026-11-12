@@ -12,7 +12,8 @@
     "shot": "node scripts/shot.mjs",
     "check": "tsc --noEmit && node scripts/shot.mjs --all",
     "new": "node scripts/new-experiment.mjs",
-    "setup": "playwright install chromium"
+    "setup": "playwright install chromium",
+    "test": "vitest run"
   },
   "dependencies": {
     "three": "0.187.0"
@@ -22,6 +23,7 @@
     "@types/node": "^22",
     "@types/three": "0.187.0",
     "typescript": "^7",
-    "vite": "^8"
+    "vite": "^8",
+    "vitest": "^4"
   }
 }

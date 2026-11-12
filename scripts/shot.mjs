@@ -2,16 +2,18 @@
 // Agent vision: renders experiments in a real browser and writes PNGs plus a JSON report.
 //
 //   yarn shot                                   current default experiment
-//   yarn shot --exp stylized-rim                one experiment
+//   yarn shot --exp materials/stylized-rim      one experiment (id = folder path under src/experiments)
 //   yarn shot --all                             every experiment (smoke check)
-//   yarn shot --exp stylized-rim --params '{"rimIntensity":4}' --stage '{"bloom":false}'
-//   yarn shot --exp stylized-rim --variants '[{"rimPower":1},{"rimPower":3},{"rimPower":6}]'
+//   yarn shot --exp materials/stylized-rim --params '{"rimIntensity":4}' --stage '{"bloom":false}'
+//   yarn shot --exp materials/stylized-rim --variants '[{"rimPower":1},{"rimPower":3},{"rimPower":6}]'
+//   yarn shot --exp reference/pbr-calibration --variants '[{"$stage":{"backdrop":"sky"}},{"$stage":{"backdrop":"space"}}]'
 //
 // Options: --t <s> (frozen time, default 1)  --size 1280x720  --out .shots  --url <running dev server>
 //          --headed  --channel chrome|msedge (use an installed browser instead of Playwright's Chromium)
 //          --frames <n> (frames to wait after load, default 6)  --webgl (force the WebGL2 backend)
+//          --page (capture the composited page incl. the experiment's HTML overlay; uses WebGL2 unless --headed)
 //
-// Output: .shots/<exp>[__v<n>].png, .shots/sheet.png (when more than one capture), .shots/report.json.
+// Output: .shots/<exp with / as .>[__v<n>].png, .shots/sheet.png (when more than one capture), .shots/report.json.
 // Exit code 1 when any page error, console error or blank capture occurred.
 // A blank WebGPU capture (GPU-less headless browser) is retried once on the WebGL2 backend.
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -35,6 +37,7 @@ const { values: args } = parseArgs({
     channel: { type: 'string' },
     frames: { type: 'string', default: '6' },
     webgl: { type: 'boolean', default: false },
+    page: { type: 'boolean', default: false },
   },
 });
 
@@ -58,7 +61,7 @@ let server;
 let baseUrl = args.url;
 if (!baseUrl) {
   // Dedicated server without HMR so edits from another session do not reload the page mid-capture.
-  server = await createServer({ server: { port: 5199, strictPort: false, hmr: false, watch: null }, logLevel: 'error' });
+  server = await createServer({ server: { port: 5199, strictPort: false, hmr: false, watch: null }, logLevel: 'silent' }); // page errors are collected from the browser instead
   await server.listen();
   baseUrl = server.resolvedUrls.local[0];
 }
@@ -78,7 +81,8 @@ try {
 
 const page = await browser.newPage({ viewport: { width, height } });
 const logs = [];
-const NOISE = [/GL Driver Message/, /GPU stall due to ReadPixels/];
+// Driver chatter, and Chrome's message when a WebGPU device is torn down by navigation.
+const NOISE = [/GL Driver Message/, /GPU stall due to ReadPixels/, /Instance dropped in popErrorScope/];
 page.on('console', (msg) => {
   if (msg.type() !== 'error' && msg.type() !== 'warning') return;
   if (NOISE.some((re) => re.test(msg.text()))) return;
@@ -114,23 +118,38 @@ for (const id of ids) {
     continue;
   }
   for (const [i, variant] of variants.entries()) {
-    const params = { ...baseParams, ...(variant ?? {}) };
-    const logStart = logs.length;
+    const { $stage: variantStage = {}, ...variantParams } = variant ?? {};
+    const params = { ...baseParams, ...variantParams };
+    const stage = { ...stageOverrides, ...variantStage };
+    let logStart = logs.length;
     const started = Date.now();
     const load = async (webgl) => {
-      await page.goto(query(id, { params: JSON.stringify(params), stage: JSON.stringify(stageOverrides), ...(webgl ? { webgl: '1' } : {}) }));
+      await page.goto(query(id, { params: JSON.stringify(params), stage: JSON.stringify(stage), ...(webgl ? { webgl: '1' } : {}) }));
       await page.waitForFunction(() => window.__proto?.ready || document.body.dataset.error, null, { timeout: 30_000 });
       await page.evaluate((n) => window.__proto?.frames(n), Number(args.frames));
       // Read the canvas inside the page: compositor screenshots can miss WebGPU canvases in headless mode.
       return page.evaluate(() => window.__proto?.capture());
     };
+    if (args.page) {
+      await load(args.webgl || !args.headed); // headless compositing misses WebGPU canvases
+      const png = await page.screenshot();
+      const file = resolve(outDir, `${id.replaceAll('/', '.')}${variant ? `__v${i}` : ''}.png`);
+      await writeFile(file, png);
+      const info = await page.evaluate(() => ({ stats: window.__proto?.stats(), current: window.__proto?.current() }));
+      const entryLogs = logs.slice(logStart);
+      shots.push({ id, variant: variant ?? undefined, file, ms: Date.now() - started, stats: info.stats, params: info.current?.params,
+        blank: false, errors: entryLogs.filter((l) => l.type !== 'warning').map((l) => l.text),
+        warnings: entryLogs.filter((l) => l.type === 'warning').map((l) => l.text), png });
+      continue;
+    }
     let capture = await load(args.webgl);
     let fallback = false;
     if (capture?.blank && !args.webgl) {
       fallback = true; // no readable WebGPU image (GPU-less headless browser): retry on the WebGL2 backend
+      logStart = logs.length; // report only the attempt that produced the image
       capture = await load(true);
     }
-    const file = resolve(outDir, `${id}${variant ? `__v${i}` : ''}.png`);
+    const file = resolve(outDir, `${id.replaceAll('/', '.')}${variant ? `__v${i}` : ''}.png`);
     const png = capture
       ? Buffer.from(capture.dataUrl.slice(capture.dataUrl.indexOf(',') + 1), 'base64')
       : await page.locator('#viewport canvas').screenshot();

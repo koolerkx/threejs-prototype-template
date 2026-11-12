@@ -1,6 +1,6 @@
 import { Mesh, MeshStandardNodeMaterial, SphereGeometry } from 'three/webgpu';
 import { sin } from 'three/tsl';
-import { defineExperiment } from '../../core/experiment';
+import { defineExperiment } from '@/core/experiment';
 
 // Scaffold copied by `yarn new <id>`. Replace the body; keep the shape:
 //   params  -> one entry per engine material parameter (ctx.u.<name> is its TSL uniform)

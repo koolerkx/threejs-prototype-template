@@ -48,7 +48,13 @@ export interface FrameSignal {
   waiters: { until: number; resolve: () => void }[];
 }
 
-export function installDebugApi(renderer: WebGPURenderer, runner: ExperimentRunner, stage: Stage, signal: FrameSignal): ProtoApi {
+export function installDebugApi(
+  renderer: WebGPURenderer,
+  runner: ExperimentRunner,
+  stage: Stage,
+  signal: FrameSignal,
+  onStageChanged: () => void = () => {},
+): ProtoApi {
   const errors: string[] = [];
   const record = (msg: string) => {
     errors.push(msg);
@@ -87,6 +93,7 @@ export function installDebugApi(renderer: WebGPURenderer, runner: ExperimentRunn
     setStage: (overrides) => {
       for (const [k, v] of Object.entries(overrides)) stage.state.set(k, v as ParamValue);
       stage.apply();
+      onStageChanged();
     },
     frames: (count = 2) => new Promise((resolve) => signal.waiters.push({ until: signal.frame + count, resolve })),
     capture: async () => {

@@ -19,8 +19,10 @@ export class ExperimentRunner {
 
   private instance: ExperimentInstance | void = undefined;
   private root: Group | null = null;
+  private overlay: HTMLElement | null = null;
   private loading: Promise<void> = Promise.resolve();
   private readonly listeners = new Set<() => void>();
+  private readonly paramListeners = new Set<() => void>();
 
   constructor(
     private readonly renderer: WebGPURenderer,
@@ -33,6 +35,12 @@ export class ExperimentRunner {
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** Called after a non-rebuild parameter change (keeps the GUI in sync with API-driven changes). */
+  onParamChange(listener: () => void): () => void {
+    this.paramListeners.add(listener);
+    return () => this.paramListeners.delete(listener);
   }
 
   load(entry: RegisteredExperiment, overrides: AnyParamValues = {}, stageOverrides: AnyParamValues = {}, resetView = true): Promise<void> {
@@ -60,6 +68,7 @@ export class ExperimentRunner {
       void this.load(cur.entry, cur.state.values, {}, false);
     } else {
       this.instance?.onParam?.(key, cur.state.values[key]);
+      this.paramListeners.forEach((l) => l());
     }
   }
 
@@ -99,6 +108,11 @@ export class ExperimentRunner {
     this.root = root;
     this.current = { entry, state };
 
+    const overlay = document.createElement('div');
+    overlay.className = 'experiment-overlay';
+    document.getElementById('overlay')!.append(overlay);
+    this.overlay = overlay;
+
     const ctx: ExperimentContext<ParamSchema> = {
       renderer: this.renderer,
       camera: this.camera,
@@ -106,6 +120,7 @@ export class ExperimentRunner {
       params: state.values,
       u: state.uniforms,
       time: this.time,
+      overlay,
     };
     this.instance = await def.setup(ctx);
     root.traverse((obj) => {
@@ -126,6 +141,8 @@ export class ExperimentRunner {
     this.instance = undefined;
     if (this.root) disposeTree(this.root);
     this.root = null;
+    this.overlay?.remove();
+    this.overlay = null;
     this.current = null;
   }
 }

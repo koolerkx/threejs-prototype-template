@@ -34,6 +34,7 @@ Angles are degrees in parameters (`…Deg`) and radians in code. Time is seconds
 - Do not transfer raw light intensities between engines; the units differ (UE5 sun in lux, Unity URP in arbitrary units). Calibrate instead: rebuild `pbr-calibration` in the engine, match exposure until the boards agree, then judge looks.
 - Tone mapping: `ACES` ≈ UE5 filmic tone mapper and Unity ACES; `Neutral` = Khronos PBR Neutral (Unity URP Neutral); `AgX` is available in Godot 4.4+ and Blender. Disable auto exposure in the engine while comparing.
 - Sky light: `studio` uses three.js `RoomEnvironment` (an IBL box). In the engine, use a Sky Light / Reflection Probe with a similar neutral cubemap.
+- Backdrops: `sky` / `outdoor` = Preetham physical sky (UE SkyAtmosphere + Sky Light real-time capture; Unity HDRP Physically Based Sky or URP procedural skybox; Godot PhysicalSkyMaterial). `space` = HDRI/cubemap skybox. `stage` = cyclorama mesh. The visible sky is scaled down (`SKY_SCALE` in `src/core/backdrops.ts`); match by eye, not by number.
 - Colors in parameters are sRGB hex. Enter the same hex in the engine color picker (UE, Unity and Godot pickers all show sRGB hex) and the linear value matches.
 
 ## 4. Material model
@@ -84,7 +85,7 @@ Noise is the usual mismatch: engine noise nodes are different functions. When th
 ## 6. Porting checklist
 
 1. Rebuild `pbr-calibration` in the engine and match exposure.
-2. In the page, use *Tools → Copy params JSON*; the JSON is the source of truth for parameter values.
+2. In the page, use *Tools → Copy params JSON*; the JSON is the source of truth for parameter values and carries a `world` block (units, up axis, handedness, forward).
 3. Create one material parameter per experiment parameter, same name in PascalCase, same default and range.
 4. Rebuild the node chain with the table above; keep the TSL structure (one TSL expression ≈ one engine node).
 5. Capture the same camera in both (`yarn shot --exp <id> --t <s>` here) and compare side by side.
