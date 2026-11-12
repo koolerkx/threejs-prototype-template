@@ -1,0 +1,88 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #1b1d21;
+  color: #d6d9de;
+  font: 12px/1.45 ui-sans-serif, system-ui, sans-serif;
+}
+
+#viewport {
+  position: fixed;
+  inset: 0;
+}
+
+#viewport canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#info {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  max-width: 420px;
+  padding: 10px 12px;
+  background: rgba(20, 22, 26, 0.82);
+  border: 1px solid #33363c;
+  border-radius: 6px;
+  pointer-events: auto;
+}
+
+#info[hidden],
+body.shot #info,
+body.shot .lil-gui {
+  display: none !important;
+}
+
+#info h1 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#info p {
+  margin: 0 0 8px;
+  color: #a7adb6;
+}
+
+#stats {
+  margin-top: 8px;
+  color: #8a9099;
+  font: 11px ui-monospace, monospace;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.badge {
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: #10131a;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: help;
+}
+
+.tier-native { background: #6fd08a; }
+.tier-graph { background: #6fb2ff; }
+.tier-code { background: #c49bff; }
+.tier-extra { background: #ffb347; }
+
+body[data-error]::after {
+  content: attr(data-error);
+  position: fixed;
+  inset: auto 12px 12px auto;
+  max-width: 50vw;
+  padding: 8px 10px;
+  background: #5a1d1d;
+  color: #ffd6d6;
+  border-radius: 4px;
+  white-space: pre-wrap;
+}

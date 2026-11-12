@@ -1,0 +1,27 @@
+{
+  "name": "threejs-prototype-template",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "yarn@4.18.1+sha512.b2e1e7524f654f2749d32b4ebcb4622473cb5bcbc485df2007e12a154e50162a4d795526768bc5f5b8f81717bfd79deb2472813d86fb5ae2eb551fa9c872b08f",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "shot": "node scripts/shot.mjs",
+    "check": "tsc --noEmit && node scripts/shot.mjs --all",
+    "new": "node scripts/new-experiment.mjs",
+    "setup": "playwright install chromium"
+  },
+  "dependencies": {
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64",
+    "@types/node": "^22",
+    "@types/three": "0.187.0",
+    "typescript": "^7",
+    "vite": "^8"
+  }
+}

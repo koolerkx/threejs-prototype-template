@@ -1,0 +1,23 @@
+# Dependencies and build output
+node_modules/
+dist/
+.yarn/*
+!.yarn/releases
+
+# Harness output (screenshots, reports)
+.shots/
+
+# Local agent / tool state
+.claude/settings.local.json
+.opencode/
+.openchamber/
+.codegraph/
+.archify/
+
+# OS and editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log

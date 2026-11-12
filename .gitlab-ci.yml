@@ -1,0 +1,14 @@
+# Publishes the prototype to GitLab Pages when `prod` is pushed. CI runs no tests; `main` is the working branch.
+pages:
+  image: node:22
+  rules:
+    - if: $CI_COMMIT_BRANCH == "prod"
+  script:
+    - corepack enable
+    - yarn install --immutable
+    - yarn build
+  pages:
+    publish: dist
+  artifacts:
+    paths:
+      - dist
