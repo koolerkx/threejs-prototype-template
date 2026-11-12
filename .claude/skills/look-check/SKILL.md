@@ -17,6 +17,7 @@ yarn shot --exp <id> --range 0:2 --count 8             # motion filmstrip in she
 yarn shot --exp <id> --range 0:2 --gif --fps 12        # also .shots/<id>.gif for the user
 yarn shot --exp <id> --cam 2                           # camera bookmark 2 (or --camera '{"position":[..],"target":[..]}')
 yarn shot --exp <id> --variants '[{"$stage":{"view":"normal"}},{"$stage":{"view":"roughness"}},{"$stage":{"view":"uv"}}]'  # buffer views
+yarn shot --exp <id> --stage '{"view":"sheet"}'        # all 20 channels in one image (order: lit, baseColor, normal, roughness, metallic / specular, ao, emissive, opacity, clearcoat / clearcoatRoughness, fuzz, fuzzRoughness, anisotropy, thinFilm / transmission, sss, height, uv, depth)
 yarn shot --exp <id> --t 2.5                           # paused at 2.5 s (default 1 s)
 yarn shot --exp <id> --variants '[{},{}]' --t 0.5      # same params, different moments: run once per --t
 yarn shot --all                                        # every experiment, smoke check
@@ -25,6 +26,8 @@ yarn shot --exp <id> --headed                          # real GPU window, WebGPU
 Ids are folder paths (`materials/stylized-rim`); PNG names replace `/` with `.`.
 The script starts its own Vite server (no HMR) unless `--url http://127.0.0.1:5173/` is given.
 Then read the PNG (or `sheet.png`) with the file-reading tool. Always look; never infer a visual result from code or logs.
+
+Full guide (headless, headed, interactive): `docs/testing.md`.
 
 ## report.json
 `.shots/report.json` → per shot: `stats` (`backend`, `drawCalls`, `triangles`, `cpuMs`, `gpuMs`, `memoryMB`, `overBudget`), `params`, `errors`, `warnings`, `blank`, `webgpuFallback`, `frameTimes` (motion).

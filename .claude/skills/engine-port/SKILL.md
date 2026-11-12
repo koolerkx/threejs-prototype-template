@@ -29,6 +29,11 @@ Create `PORT.md` in the experiment folder:
 - Differences to expect and how to judge them (calibration board first).
 For DX12/HLSL, write the HLSL function for any `code`-tier node (e.g. the noise) in a fenced block.
 
+## Substrate-targeted looks
+- Build them with `@/lib/substrate` (`slab`, `horizontalMix`, `verticalLayer`, `coverageWeight`); copy `port` from the
+  result of `createSubstrateMaterial()` or merge it into the experiment's notes, and list its `approximations` in the
+  brief's Findings so the UE rebuild knows where it will differ.
+
 ## Rules
 - Targets are a purpose, not a hard rule: an `extra` look is allowed if the user wants it; just make the cost visible.
 - Do not change the look to make a tier lower unless the user asks.

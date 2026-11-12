@@ -52,6 +52,22 @@ Angles are degrees in parameters (`…Deg`) and radians in code. Time is seconds
 | `MeshBasicNodeMaterial` | Unlit | URP Unlit | `unshaded` |
 | `MeshToonNodeMaterial` | no built-in: emissive trick or custom shading model | Shader Graph custom lighting | `diffuse_toon` |
 
+### Substrate-style authoring (`@/lib/substrate`)
+
+| Operator here | UE5 Substrate node | How it renders here |
+| --- | --- | --- |
+| `slab({ diffuseAlbedo, f0, f90, roughness, anisotropy, fuzz…, thinFilm…, sss…, transmission… })` | Substrate Slab BSDF | `MeshSSSNodeMaterial` (physical + thickness translucency). F0/F90 exact via specular colour/intensity. |
+| `metalnessToSlab({ baseColor, metallic, specular })` | Substrate Metalness-To-DiffuseAlbedo-F0 | same conversion |
+| `horizontalMix(bg, fg, mix)` | Substrate Horizontal Mixing | parameter blending (UE's cheaper mode), not two BSDFs |
+| `verticalLayer(top, base, coverage)` | Substrate Vertical Layer | one clear-coat lobe (F0 0.04, top roughness); top albedo tints the base |
+| `coverageWeight(tree, w)` | Substrate Coverage Weight | opacity |
+| `secondRoughness` / `secondRoughnessWeight` | Slab haziness | clear-coat lobe when no coat is present |
+| `sssColor` / `sssStrength` | Slab SSS MFP | thickness-based translucency (not diffusion) |
+
+`createSubstrateMaterial()` returns the approximations it made for the given tree; the substrate-lab experiment shows
+them on screen. In UE the same graph evaluates every operator, so layered results there are richer than here.
+Unity: HDRP StackLit covers coat, dual specular, iridescence, SSS and anisotropy; URP needs custom HLSL.
+
 Prefer overriding inputs of a lit node material (`colorNode`, `roughnessNode`, `metalnessNode`, `normalNode`, `emissiveNode`, `positionNode`, `opacityNode`). Replacing the whole output (`fragmentNode`, `outputNode`) or writing a custom lighting model moves the look to `code` or `extra` in every engine.
 
 ## 5. TSL node map

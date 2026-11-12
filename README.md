@@ -28,7 +28,10 @@ New prototype from this template: copy the folder (or use it as a GitLab/GitHub 
 | Perf HUD | top left | fps, frame / CPU / GPU ms (GPU where timestamp queries exist), draw calls, triangles, memory, geometries / textures / programs, frame-time graph with the budget line. Budget targets: PC 60, PC 120, Console 30, Mobile 30, VR 90; over-budget values turn red. P toggles. |
 | Presets | left, under the tree | Save params + stage + camera + time with a thumbnail (IndexedDB, this browser). Click to apply. Export / Import `presets.json`; a `presets.json` committed next to an experiment ships as read-only "repo" presets. |
 | Scene thumbnails | left | Each scene's last look, captured automatically after it loads. |
-| View modes | right, Stage → View mode | Lit, base color, normal, roughness, metallic, emissive, UV checker, depth, wireframe (UE-style buffer visualisation). V cycles, Shift+V back. |
+| View modes | right, Stage → View mode | UE-style buffer visualisation: lit, wireframe, base color, normal (world), roughness, metallic, specular (UE scale), AO, emissive, opacity, clear coat, clear-coat roughness, fuzz, fuzz roughness, anisotropy, thin film, transmission, SSS, height, UV checker, depth. V cycles, Shift+V back. |
+| Sheet view | View mode `sheet`, key B | All 20 channels at once in a 5 × 4 grid, in real time (two MRT passes), with labels. |
+| Gallery | left, ⊞ Gallery / key G | Centre modal with every scene as a card (thumbnail, folder groups, filter, port tier dots). Viewport rendering pauses while it is open; "Generate missing thumbnails" visits unseen scenes once. |
+| Settings | ⚙ bottom right | Toggle each UI element (browser, presets, params, info, transport, bookmarks, perf HUD, overlay, sheet labels, auto thumbnails) and viewport helpers (grid, shadow catcher, shadows). Persisted. |
 | Params panel | right | Generated from each experiment's param schema; units shown; changes mirrored to the URL. |
 | Backdrops | right, top | `none`, `stage` (cyclorama + floor disc), `sky` (physical sky), `space` (stars + nebula), `outdoor` (sky + ground + fog), `hdri` (files in `src/assets/hdri/`; four CC0 Poly Haven HDRIs included, rotation and blur). Each also provides the sky-light IBL. |
 | Stage | right, Stage folder | Sun (intensity, color, elevation, azimuth), sky light (backdrop / studio / hemisphere / none), shadows, shadow catcher, 1 m grid, tone mapping (ACES / AgX / Neutral), exposure, bloom. |
@@ -36,7 +39,7 @@ New prototype from this template: copy the folder (or use it as a GitLab/GitHub 
 | GIF capture | right, Capture GIF folder | Records duration / fps / width from the current time by stepping the clock frame by frame (deterministic), then downloads `<id>.gif`. |
 | State across reloads | | Camera, time transport and stage survive a reload in the tab (Vite full reload after an edit, F5); params live in the URL. |
 | Info card | bottom left | Description, port tier badges per engine (hover for notes), backend / fps / draw calls / triangles. |
-| Keys | | Space play/pause, `,` `.` frame step, `[` `]` speed, Home restart, 1-9 / Ctrl+1-9 bookmarks, V view mode, P perf HUD, H hide UI, `/` filter scenes. |
+| Keys | | Space play/pause, `,` `.` frame step, `[` `]` speed, Home restart, 1-9 / Ctrl+1-9 bookmarks, V view mode, B sheet view, G gallery, P perf HUD, H hide UI, `/` filter scenes. |
 
 ### Authoring
 | Feature | API |
@@ -47,6 +50,8 @@ New prototype from this template: copy the folder (or use it as a GitLab/GitHub 
 | Basic shapes | `primitiveMesh('torus', material, { onGround: true })`, `shapeParam('sphere')`. 14 engine-style 1 m shapes: cube, sphere, icosphere, cylinder, cone, pyramid, capsule, torus, torusKnot, wedge, plane, quad, rect, disc. Engine names in `PRIMITIVE_INFO`. |
 | HTML overlay | `ctx.overlay` - layer over the viewport for prototype UI, labels, legends; cleared on unload. |
 | Shared libs | `@/lib/nodes` (TSL helpers, e.g. `fresnel`), `@/lib/curves` (engine-neutral trajectory math, tested), `@/lib/lines` (thick / dashed lines), `@/lib/assets` (`loadGltf`). |
+| Substrate-style materials | `@/lib/substrate`: `slab({...})`, `horizontalMix`, `verticalLayer`, `coverageWeight`, `metalnessToSlab`, `createSubstrateMaterial(tree)` → material + list of approximations + port notes. Flattened to one physical BSDF (parameter blending, one coat lobe); see docs/engine-port.md. |
+| Custom debug channels | `debugChannel(material, 'height' \| 'sss', node)` from `@/core/views` feeds the height / SSS views. |
 | Per-experiment stage | `stage: { backdrop: 'space', bloom: true }`, `camera: { position, target, fovDeg }`, `bookmarks: [{ position, target }]`, `budget: { drawCalls: 50 }`. |
 | Repo presets | `src/experiments/<folder>/<name>/presets.json` (the Export format). |
 | Port notes | `port: { ue: { tier: 'graph', notes: [...] }, unity: {...} }`, tiers `native` / `graph` / `code` / `extra`. |
@@ -70,7 +75,10 @@ New prototype from this template: copy the folder (or use it as a GitLab/GitHub 
 - `reference/pbr-calibration` - metallic × roughness board to match engine lighting (default page).
 - `reference/primitives` - every basic shape at its default size, labelled with engine counterparts.
 - `materials/stylized-rim` - TSL Fresnel rim, noise bands, vertex wobble, spin; on the space backdrop with bloom.
+- `materials/substrate-lab` - Substrate-style recipes: plastic, car paint, velvet, soap bubble, skin, rust over metal (horizontal mix), lacquer (vertical layer), hazy metal, frosted glass.
 - `gameplay/projectile-curves` - straight / mortar / Bezier trajectories as scrolling dashed lines.
+
+Testing in a browser (headless, headed, interactive with `window.__proto`): [docs/testing.md](docs/testing.md).
 
 ## Commands
 

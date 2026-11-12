@@ -15,9 +15,9 @@ Throwaway three.js prototype template for testing 3D graphics, gameplay visuals 
 ## Layout
 - `src/experiments/<folder>/<name>/index.ts` - one experiment per folder, auto-registered; the id is the folder path (`materials/stylized-rim`) and folders form the scene browser tree. `brief.md` beside it holds the question and findings. Paths with a `_` segment are skipped (`_template/` is the scaffold).
 - `src/core/` - harness: param schema → TSL uniforms, stage (sun, sky light, backdrops, tone mapping, bloom), runner, clock, URL state.
-- `src/lib/` - shared code with an engine twin: `primitives.ts` (engine-style basic shapes), `nodes.ts` (TSL helpers), `curves.ts` (engine-neutral trajectory math), `lines.ts` (thick/dashed lines), `assets.ts` (glTF loading).
-- `src/ui/` - scene browser + presets (left), time transport + camera bookmarks (top), perf HUD (top left), lil-gui panel (right), info card.
-- `src/core/` also holds `perf.ts` (budgets), `store.ts` (IndexedDB presets/thumbnails), `hdri.ts`, `session.ts` (state across reloads). `src/assets/hdri/` holds the HDRIs. `src/harness/debugApi.ts` - `window.__proto`.
+- `src/lib/` - shared code with an engine twin: `substrate.ts` (UE Substrate-style material operators), `primitives.ts` (engine-style basic shapes), `nodes.ts` (TSL helpers), `curves.ts` (engine-neutral trajectory math), `lines.ts` (thick/dashed lines), `assets.ts` (glTF loading).
+- `src/ui/` - scene browser + presets + gallery modal (left), time transport + camera bookmarks (top), perf HUD (top left), lil-gui panel (right), info card, settings widget (bottom right).
+- `src/core/` also holds `views.ts` (view modes, sheet view, custom debug channels), `perf.ts` (budgets), `store.ts` (IndexedDB presets/thumbnails), `hdri.ts`, `session.ts` (state across reloads). `src/assets/hdri/` holds the HDRIs. `src/harness/debugApi.ts` - `window.__proto`.
 - `public/assets/` - asset files; record each source in its README.
 - `scripts/` - `shot.mjs` (capture), `new-experiment.mjs` (scaffold).
 
@@ -34,11 +34,12 @@ Throwaway three.js prototype template for testing 3D graphics, gameplay visuals 
 - Every tunable is a `params` entry, read through `ctx.u.<name>` in TSL and `ctx.params.<name>` in JS. One param = one engine parameter; give units for physical values; degrees in params, radians in code.
 - Animate with `ctx.time` / `FrameInfo.time`, never the TSL `time` node or wall-clock time: the transport (pause, speed, seek, frame step) and captures depend on it. Prefer functions of `time` over accumulating `delta`, so seeking and stepping back stay correct.
 - Use `primitiveMesh()` / `shapeParam()` from `@/lib/primitives` for basic shapes, so sizes match engine primitives.
-- Materials: start from a lit node material and override its inputs; replacing the whole output or the lighting model pushes the port to `code`/`extra` - only do it when the experiment is about that.
+- Materials: for layered looks that target UE5 Substrate, build them with `@/lib/substrate` and show its `approximations`; otherwise start from a lit node material and override its inputs; replacing the whole output or the lighting model pushes the port to `code`/`extra` - only do it when the experiment is about that.
 - Gameplay and logic: keep the math in plain functions with number tuples (like `src/lib/curves.ts`) so it ports line-for-line to C++/C#; draw it separately. Give branchy or numeric logic a small `*.test.ts`.
 - UI prototypes: build HTML in `ctx.overlay`; capture with `yarn shot --page`.
 - Create objects under `ctx.root` and DOM under `ctx.overlay` (both cleared on unload). Release anything else in `dispose()`.
 - Pick a backdrop in the experiment's `stage` (`none`, `stage`, `sky`, `space`, `outdoor`, `hdri`) when the look is judged in context.
+- Publish non-standard channels with `debugChannel(material, 'height' | 'sss', node)` so the view modes and sheet show them.
 - Give experiments that need several angles `bookmarks`, and tight-budget ones (VFX, mobile) a `budget` override; check `stats().overBudget` / the shot report.
 - To hand chosen looks back, write `presets.json` next to the experiment (the page's Export format).
 - Keep each experiment self-contained. Change `src/core`, `src/ui` or `scripts` only for a reason that helps every experiment; run `yarn check` afterwards.
@@ -46,8 +47,9 @@ Throwaway three.js prototype template for testing 3D graphics, gameplay visuals 
 - World: 1 unit = 1 m, +Y up, ground at y = 0.
 
 ## Verification
+- How to test in a browser (headless `yarn shot`, `--headed` on the real GPU, interactive through `window.__proto`): [docs/testing.md](docs/testing.md).
 - `yarn typecheck` must pass; `yarn test` too when logic with tests changed.
-- For any visual change, capture with `yarn shot` and look at the PNG before reporting. Never describe a visual result you did not look at. For motion, look at the `--range` filmstrip; for material channels, use buffer views (`--stage '{"view":"normal"}'`).
+- For any visual change, capture with `yarn shot` and look at the PNG before reporting. Never describe a visual result you did not look at. For motion, look at the `--range` filmstrip; for material channels, use buffer views (`--stage '{"view":"normal"}'`) or the whole sheet (`--stage '{"view":"sheet"}'`).
 - No visual regression suites, evidence ledgers, PASS/FAIL reports or review subagents unless the user asks.
 - Do not change requested visual behaviour to make a check pass; ask instead.
 
