@@ -129,4 +129,15 @@ export default defineExperiment({
 
 ## Deploy
 
-`.gitlab-ci.yml` publishes `dist/` to GitLab Pages when `prod` is pushed. `main` is the working branch.
+Push to the `prod` branch to publish `dist/` (`main` is the working branch; CI runs no tests):
+
+| Host | File | One-time setup |
+| --- | --- | --- |
+| GitLab Pages | `.gitlab-ci.yml` | none |
+| GitHub Pages | `.github/workflows/pages.yml` | Settings → Pages → Source: **GitHub Actions** |
+
+`vite.config.ts` uses `base: './'`, so the build works under any project sub-path (`<user>.github.io/<repo>/`, GitLab subgroups).
+
+```bash
+git push origin main:prod      # publish the current main
+```
